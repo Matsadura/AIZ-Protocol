@@ -26,7 +26,8 @@ Fixed::Fixed(const Fixed &other)
  * @other: another Fixed object
  * Return: reference to the current object
  */
-Fixed &Fixed::operator=(const Fixed &other) {
+Fixed &Fixed::operator=(const Fixed &other)
+{
     std::cout << "Copy assignement operator called\n";
 
     if (this != &other)
