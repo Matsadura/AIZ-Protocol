@@ -1,10 +1,12 @@
 name: Code Formatter
 
 on:
-  push:
-    branches: [ main, master ]
   pull_request:
-    branches: [ main, master ]
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.cpp'
+      - '**.hpp'
 
 jobs:
   format-check:
@@ -15,14 +17,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            **/*.c
+            **/*.h
+            **/*.cpp
+            **/*.hpp
+
       - name: Install clang-format
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-format
 
-      - name: Run clang-format check
-        # Update the 'src/' and 'includes/' paths to match where your actual code lives.
+      - name: Run clang-format check on changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          find . -type f \( -name "*.cpp" -o -name "*.hpp" -o -name "*.c" -o -name "*.h" \) \
-          -not -path "*/\.git/*" \
-          | xargs clang-format --style=file --dry-run --Werror
+          has_errors=0
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "Checking $file..."
+            if ! clang-format --style=file "$file" | diff -u "$file" -; then
+              has_errors=1
+            fi
+          done
+          exit $has_errors
