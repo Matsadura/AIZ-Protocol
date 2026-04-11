@@ -1,0 +1,16 @@
+BasedOnStyle: Microsoft
+# UseTab: Always
+IndentWidth: 8
+SeparateDefinitionBlocks: Always
+# AccessModifierOffset: -4 # indenting public and private keywords
+PackConstructorInitializers: NextLine
+BreakConstructorInitializers: AfterColon
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 2
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+IndentCaseLabels: true
+AlignConsecutiveAssignments: Consecutive
+AlwaysBreakTemplateDeclarations: Yes

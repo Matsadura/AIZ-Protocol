@@ -1,0 +1,29 @@
+name: Clang-Tidy Linter
+
+on:
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    name: Run clang-tidy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install clang-tidy and bear
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy bear
+
+      - name: Generate compilation database
+        # 'bear' intercepts the compiler calls from your Makefile to generate compile_commands.json
+        run: bear -- make
+
+      - name: Run clang-tidy
+        # Finds all C++ source files and runs the linter using the config at the root.
+        # The '-p .' flag tells it where to find compile_commands.json.
+        run: |
+          find src/ -name "*.cpp" | xargs clang-tidy -p . 
