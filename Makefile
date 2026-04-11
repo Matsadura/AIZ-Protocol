@@ -1,7 +1,7 @@
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++98
-SRCS = main.cpp Fixed.cpp 
-HEADER = Fixed.hpp
+SRCS = src/main.cpp src/Fixed.cpp 
+HEADER = src/Fixed.hpp
 OBJS = $(SRCS:.cpp=.o)
 NAME = program
 
