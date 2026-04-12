@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Get changed files
         id: changed-files
@@ -27,19 +29,16 @@ jobs:
             **/*.cpp
             **/*.hpp
 
-      - name: Install clang-tidy and bear
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-tidy bear
-
-      - name: Generate compilation database
+      - name: Environment Setup and Compilation Database
         if: steps.changed-files.outputs.any_changed == 'true'
-        # 'bear' intercepts the compiler calls from your Makefile to generate compile_commands.json
-        run: bear -- make
-
-      - name: Run clang-tidy on all source files
-        if: steps.changed-files.outputs.any_changed == 'true'
-        # Finds all C++ source files and runs the linter using the config at the root.
-        # The '-p .' flag tells it where to find compile_commands.json.
         run: |
-          find src/ -name "*.cpp" | xargs clang-tidy -p . 
+          sudo apt-get update -qq > /dev/null
+          sudo apt-get install -y -qq clang-tidy bear > /dev/null
+          echo "Environment Setup done!"
+          bear -- make > /dev/null
+          echo "Compilation db done!"
+
+      - name: Execute clang-tidy
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          find src/ -name "*.cpp" -exec clang-tidy -p . --warnings-as-errors='*' {} +
