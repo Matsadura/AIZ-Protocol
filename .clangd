@@ -1,2 +1,9 @@
 Diagnostics:
   UnusedIncludes: None
+
+Completion:
+  ArgumentLists: Delimiters
+
+CompileFlags:
+  Compiler: g++
+  Add: [-xc++, -Wall, -Wextra, -std=c++98]
