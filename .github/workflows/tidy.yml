@@ -38,7 +38,7 @@ jobs:
           bear -- make > /dev/null
           echo "Compilation db done!"
 
-      - name: Execute clang-tidy
+      - name: Linter diagnoses
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           find src/ -name "*.cpp" -exec clang-tidy -p . --warnings-as-errors='*' {} +
