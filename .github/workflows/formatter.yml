@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Get changed files
         id: changed-files
@@ -28,18 +30,19 @@ jobs:
             **/*.hpp
 
       - name: Install clang-format
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format
+          sudo apt-get update -qq > /dev/null
+          sudo apt-get install -y -qq clang-format > /dev/null
 
-      - name: Run clang-format check on changed files
+      - name: Check the norm
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           has_errors=0
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            echo "Checking $file..."
-            if ! clang-format --style=file "$file" | diff -u "$file" -; then
+            if ! clang-format --style=file --dry-run --Werror "$file" > /dev/null 2>&1; then
+              printf "Formatting errors at '%s' file!\n" "$file"
               has_errors=1
             fi
           done
-          exit $has_errors
+          exit "$has_errors"

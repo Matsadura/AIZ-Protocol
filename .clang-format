@@ -1,6 +1,6 @@
 BasedOnStyle: Microsoft
 # UseTab: Always
-IndentWidth: 8
+IndentWidth: 4
 SeparateDefinitionBlocks: Always
 # AccessModifierOffset: -4 # indenting public and private keywords
 PackConstructorInitializers: NextLine
