@@ -35,7 +35,7 @@ jobs:
           sudo apt-get update -qq > /dev/null
           sudo apt-get install -y -qq clang-format > /dev/null
 
-      - name: Run clang-format check on changed files
+      - name: Check the norm
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           has_errors=0
