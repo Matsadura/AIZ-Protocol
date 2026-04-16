@@ -32,4 +32,8 @@ class lexer
         ~lexer();
         std::vector<token> tokens;
         std::vector<token>  tokenize();
+    private:
+        // helpers
+        void    collect_digits();
+        void    collect_words();
 };
