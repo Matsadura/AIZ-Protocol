@@ -11,6 +11,7 @@ enum type
     SEMICOLON,
     WORD,
     NUMBER,
+    UNKNOWN,
     EOF_TOKEN
 };
 
@@ -34,6 +35,12 @@ class lexer
         std::vector<token>  tokenize();
     private:
         // helpers
-        void    collect_digits();
+        int    collect_digits(std::string str);
         void    collect_words();
+        void    collect_lbrace();
+        void    collect_rbrace();
+        void    collect_semicolon();
+        bool    isWordChar(char c);
+        struct token    createToken(std::string value, type type);
+
 };

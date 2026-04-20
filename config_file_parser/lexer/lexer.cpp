@@ -6,10 +6,10 @@
  */
 lexer::lexer(std::string file_name) : pos(0), line(0)
 {
-    std::ifstream file(file_name);
+    std::ifstream file(file_name.c_str());
     
     if(!file)
-        throw std::runtime_error("Can not to open file");
+        throw std::runtime_error("Cannot open file");
     file_content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
     if(file_content.empty())
         throw std::runtime_error("Empty file");
@@ -21,67 +21,101 @@ lexer::lexer(std::string file_name) : pos(0), line(0)
 lexer::~lexer(){}
 
 /**
+ * Helper function that detects valid characters
+ * @c = the character
+ */
+bool    lexer::isWordChar(char c)
+{
+    return std::isalnum(c) || c == '_' || c == '.' || c == '/' || c == ':' || c == '-';
+}
+
+/**
+ * create tokens
+ * @value = the value of the token
+ * @type = type of the token
+ */
+struct token    lexer::createToken(std::string value, type type)
+{
+    struct token obj;
+    obj.type = type;
+    obj.line = line;
+    obj.value = value;
+    return obj;
+}
+
+/**
  * tokenizer
  */
 std::vector<token>  lexer::tokenize()
 {
-    std::string str = file_content;
-    for(; str[pos]; pos++)
+    while (pos < file_content.size())
     {
-        if(str[pos] == ' ' || str[pos] == '\t')
+        char current = file_content[pos];
+       if (isspace(current)) {
+            if (current == '\n') line++;
+            pos++;
             continue;
-        if(str[pos] == '\n')
-            line++;
-        if(isdigit(str[pos]))
-            collect_digits();
-        if(isalpha(str[pos]))
+        }
+        else if(current == '{')
+            tokens.push_back(createToken("{", LBRACE));
+        else if(current == '}')
+            tokens.push_back(createToken("}", RBRACE));
+        else if(current == ';')
+            tokens.push_back(createToken(";", SEMICOLON));
+        else if(current == '#')
+        {
+            while (pos < file_content.size() && file_content[pos] != '\n')
+                pos++;
+            pos--;
+        }
+        else if (isWordChar(current))
+        {
             collect_words();
-
+            continue;
+        }
+        else
+        {
+            std::string value;
+            tokens.push_back(createToken( value+=current, UNKNOWN));
+        }
+        pos++;
     }
+    return tokens;
 }
 
 /**
  * Helper function that collects a NUMBER from
  * the config  file
  */
-// void    lexer::collect_digits()
-// {
-//     std::string str = file_content;
-//     std::string value;
-//     struct token obj;
+int    lexer::collect_digits(std::string str)
+{
+    struct token obj;
 
-//     for(; str[pos]; pos++)
-//     {
-//         if(!isdigit(str[pos]))
-//             break;
-//         value += str[pos];
-//     }
-//     obj.value = value;
-//     obj.type = NUMBER;
-//     obj.line = line;
-//     tokens.push_back(obj);
-// }
+    for(int i = 0; str[i]; i++)
+    {
+        if(!isdigit(static_cast<unsigned char>(str[i])))
+            return 0;
+    }
+    tokens.push_back(createToken(str, NUMBER));
+    return 1;
+}
+
 
 /**
  * Helper function that collects a WORD from
- * the config file
+ * the config file and check if it's a number
  */
 void    lexer::collect_words()
 {
-    std::string str = file_content;
     std::string value;
     struct token obj;
 
-    for(; str[pos]; pos++)
+    while(pos < file_content.size() && isWordChar(file_content[pos]) )
     {
-        if(!isalpha(str[pos]) && str[pos] != '_')
-            break;
-        value += str[pos];
+        value += file_content[pos];
+        pos++;
     }
-    obj.value = value;
-    obj.type = WORD;
-    obj.line = line;
-    tokens.push_back(obj);
+    if(collect_digits(value))
+        return;
+    tokens.push_back(createToken(value, WORD));
 }
-
-// I should modify collect_words to make it handle everything that is not a symbol and then check it is a number
