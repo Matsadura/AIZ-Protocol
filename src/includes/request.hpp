@@ -30,6 +30,7 @@ class Request {
         ~Request( void );
 
         void 								appendData(const char* data, size_t length);
+        void 								setMaxBodySize(size_t max_size);
         
         ParserState 						getState() const;
         int 								getErrorCode() const;
