@@ -34,7 +34,8 @@ Request::Request(const Request& other) :
 
 Request& Request::operator=(const Request& other)
 {
-    if (this != &other) {
+    if (this != &other)
+    {
         m_state = other.m_state;
         m_raw_buffer = other.m_raw_buffer;
         m_error_code = other.m_error_code;
