@@ -1,5 +1,8 @@
 #include "../includes/request.hpp"
 
+/**
+ * Constructor for the Request class.
+ */
 Request::Request( void ) :
     m_state(REQUEST_LINE),
     m_error_code(0),
@@ -12,6 +15,9 @@ Request::Request( void ) :
 {
 }
 
+/**
+ * Copy constructor for the Request class.
+ */
 Request::Request(const Request& other) :
     m_state(other.m_state),
     m_raw_buffer(other.m_raw_buffer),
@@ -32,6 +38,9 @@ Request::Request(const Request& other) :
 {
 }
 
+/**
+ * Assignment operator for the Request class.
+ */
 Request& Request::operator=(const Request& other)
 {
     if (this != &other)
@@ -56,6 +65,9 @@ Request& Request::operator=(const Request& other)
     return *this;
 }
 
+/**
+ * Destructor for the Request class.
+ */
 Request::~Request( void )
 {
 }
