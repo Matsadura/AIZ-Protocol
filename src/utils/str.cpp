@@ -1,14 +1,14 @@
 #include "../includes/utils.hpp"
-#include <vector>
 #include <iostream>
+#include <vector>
 
 /**
-* split - Splits a string into a vector of strings based on a specified delimiter.
-* @str: The input string to be split.
-* @delimiter: The character used to split the string.
-* Return: A vector of strings resulting from the split operation.
-*/
-std::vector<std::string > split(const std::string& str, char delimiter)
+ * split - Splits a string into a vector of strings based on a specified delimiter.
+ * @str: The input string to be split.
+ * @delimiter: The character used to split the string.
+ * Return: A vector of strings resulting from the split operation.
+ */
+std::vector<std::string> split(const std::string &str, char delimiter)
 {
     std::vector<std::string> tokens;
     std::string token;
@@ -34,11 +34,11 @@ std::vector<std::string > split(const std::string& str, char delimiter)
 }
 
 /**
-* trim - Removes leading and trailing whitespace from a string.
-* @str: The input string to be trimmed.
-* Return: A new string with leading and trailing whitespace removed.
-*/
-std::string trim(const std::string& str)
+ * trim - Removes leading and trailing whitespace from a string.
+ * @str: The input string to be trimmed.
+ * Return: A new string with leading and trailing whitespace removed.
+ */
+std::string trim(const std::string &str)
 {
     size_t first = str.find_first_not_of(" \t\n\r\f\v");
     if (first == std::string::npos)
