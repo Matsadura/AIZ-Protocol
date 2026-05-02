@@ -4,14 +4,14 @@
  * constructor
  * @file_name: The configuration file name
  */
-lexer::lexer(std::string file_name) : pos(0), line(0)
+lexer::lexer(std::string &file_name) : m_pos(0), m_line(0)
 {
     std::ifstream file(file_name.c_str());
     
     if(!file)
         throw std::runtime_error("Cannot open file");
-    file_content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-    if(file_content.empty())
+    m_file_content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    if(m_file_content.empty())
         throw std::runtime_error("Empty file");
 }
 
@@ -34,11 +34,11 @@ bool    lexer::isWordChar(char c)
  * @value = the value of the token
  * @type = type of the token
  */
-struct token    lexer::createToken(std::string value, type type)
+struct t_token    lexer::createToken(const std::string &value, t_type type) const
 {
-    struct token obj;
+    struct t_token obj;
     obj.type = type;
-    obj.line = line;
+    obj.line = m_line;
     obj.value = value;
     return obj;
 }
@@ -46,14 +46,14 @@ struct token    lexer::createToken(std::string value, type type)
 /**
  * tokenizer
  */
-std::vector<token>  lexer::tokenize()
+std::vector<t_token>  lexer::tokenize()
 {
-    while (pos < file_content.size())
+    while (m_pos < m_file_content.size())
     {
-        char current = file_content[pos];
-       if (isspace(current)) {
-            if (current == '\n') line++;
-            pos++;
+        char current = m_file_content[m_pos];
+        if (isspace(current)) {
+            if (current == '\n') m_line++;
+            m_pos++;
             continue;
         }
         else if(current == '{')
@@ -64,9 +64,9 @@ std::vector<token>  lexer::tokenize()
             tokens.push_back(createToken(";", SEMICOLON));
         else if(current == '#')
         {
-            while (pos < file_content.size() && file_content[pos] != '\n')
-                pos++;
-            pos--;
+            while (m_pos < m_file_content.size() && m_file_content[m_pos] != '\n')
+                m_pos++;
+            m_pos--;
         }
         else if (isWordChar(current))
         {
@@ -78,7 +78,7 @@ std::vector<token>  lexer::tokenize()
             std::string value;
             tokens.push_back(createToken( value+=current, UNKNOWN));
         }
-        pos++;
+        m_pos++;
     }
     return tokens;
 }
@@ -89,7 +89,7 @@ std::vector<token>  lexer::tokenize()
  */
 int    lexer::collect_digits(std::string str)
 {
-    struct token obj;
+    struct t_token obj;
 
     for(int i = 0; str[i]; i++)
     {
@@ -100,7 +100,6 @@ int    lexer::collect_digits(std::string str)
     return 1;
 }
 
-
 /**
  * Helper function that collects a WORD from
  * the config file and check if it's a number
@@ -108,12 +107,12 @@ int    lexer::collect_digits(std::string str)
 void    lexer::collect_words()
 {
     std::string value;
-    struct token obj;
+    struct t_token obj;
 
-    while(pos < file_content.size() && isWordChar(file_content[pos]) )
+    while(m_pos < m_file_content.size() && isWordChar(m_file_content[m_pos]) )
     {
-        value += file_content[pos];
-        pos++;
+        value += m_file_content[m_pos];
+        m_pos++;
     }
     if(collect_digits(value))
         return;

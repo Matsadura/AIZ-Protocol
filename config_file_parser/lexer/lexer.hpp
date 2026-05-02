@@ -4,7 +4,7 @@
 #include "vector"
 #include "fstream"
 #include "iterator"
-enum type
+enum t_type
 {
     LBRACE,
     RBRACE,
@@ -15,9 +15,9 @@ enum type
     EOF_TOKEN
 };
 
-struct token
+struct t_token
 {
-    type type;
+    t_type type;
     std::string value;
     int line;
 };
@@ -25,22 +25,19 @@ struct token
 class lexer
 {
     private:
-        std::string file_content;
-        size_t pos;
-        int line;
+        std::string m_file_content;
+        size_t m_pos;
+        int m_line;
     public:
-        lexer(std::string file_name);
+        lexer(std::string &file_name);
         ~lexer();
-        std::vector<token> tokens;
-        std::vector<token>  tokenize();
+        std::vector<t_token> tokens;
+        std::vector<t_token>  tokenize();
     private:
         // helpers
         int    collect_digits(std::string str);
         void    collect_words();
-        void    collect_lbrace();
-        void    collect_rbrace();
-        void    collect_semicolon();
         bool    isWordChar(char c);
-        struct token    createToken(std::string value, type type);
+        struct t_token    createToken(const std::string &value, t_type type) const;
 
 };
