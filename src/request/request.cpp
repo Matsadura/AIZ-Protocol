@@ -203,12 +203,10 @@ void Request::parseRequestLine()
         return;
     for (size_t i = 0; i < pos; ++i)
     {
+        if (m_raw_buffer[i] == '\r' || m_raw_buffer[i] == '\n')
         {
-            if (m_raw_buffer[i] == '\r' || m_raw_buffer[i] == '\n')
-            {
-                setError(BAD_REQUEST);
-                return;
-            }
+            setError(BAD_REQUEST);
+            return;
         }
     }
 
