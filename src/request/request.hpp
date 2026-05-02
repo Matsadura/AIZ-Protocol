@@ -47,17 +47,17 @@ class Request
     void setMaxBodySize(size_t max_size);
 
     void setError(int error_code);
-    ParserState getState() const;
-    int getErrorCode() const;
-    bool isComplete() const;
+    ParserState getState(void) const;
+    int getErrorCode(void) const;
+    bool isComplete(void) const;
 
-    std::string getMethod() const;
-    std::string getURI() const;
-    std::string getVersion() const;
+    std::string getMethod(void) const;
+    std::string getURI(void) const;
+    std::string getVersion(void) const;
     std::string getHeader(const std::string &key) const;
-    std::map<std::string, std::string> getHeaders() const;
-    const std::vector<char> &getBody() const;
-    void parseRequestLine();
+    std::map<std::string, std::string> getHeaders(void) const;
+    const std::vector<char> &getBody(void) const;
+    void parseRequestLine(void);
 
   private:
     ParserState m_state;
@@ -80,12 +80,12 @@ class Request
     size_t m_current_chunk_size;
     size_t m_chunk_bytes_read;
 
-    void parseHeaders();
-    void parseBody();
-    void parseChunkedBody();
+    void parseHeaders(void);
+    void parseBody(void);
+    void parseChunkedBody(void);
 
-    std::string decodeURI(const std::string &uri);
-    void extractPathAndQuery();
+    bool decodeURI(const std::string &uri, std::string &decoded_uri);
+    void extractPathAndQuery(void);
 };
 
 #endif /* REQUEST_HPP */

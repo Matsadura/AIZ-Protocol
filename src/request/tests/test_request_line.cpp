@@ -40,5 +40,29 @@ int main()
     test("GET hello HTTP/1.1\r\n");           // Invalid URI (does not start with '/')
     test("GET /he\x01llo HTTP/1.1\r\n");      // Invalid URI (contains control character)
     test("GET / HTTP/1.1\rBAD\n\r\n");        // Invalid request line with CRLF in the middle
+
+    test("GET /hello%20world HTTP/1.1\r\n");  // space
+    test("GET /a%2Fb HTTP/1.1\r\n");          // '/'
+    test("GET /file%2Etxt HTTP/1.1\r\n");     // '.'
+    test("GET /%7Euser HTTP/1.1\r\n");        // '~'
+
+    test("GET /test% HTTP/1.1\r\n");          // incomplete
+    test("GET /test%2 HTTP/1.1\r\n");         // incomplete hex
+    test("GET /test%GG HTTP/1.1\r\n");        // invalid hex
+    test("GET /test%2Z HTTP/1.1\r\n");        // invalid hex
+    test("GET /test%/a HTTP/1.1\r\n");        // broken format
+
+    test("GET /he\x01llo HTTP/1.1\r\n");
+    test("GET /test\x7F HTTP/1.1\r\n");
+    test("GET /\x00 HTTP/1.1\r\n");
+
+    test("GET / HTTP/1.1\rBAD\n");
+    test("GET / HTTP/1.1\r\nInjected: evil\r\n");
+    test("GET /test\r\nHTTP/1.1\r\n");
+
+    test("GET ////////////////////////////////////////// HTTP/1.1\r\n");
+    test("GET /%41%42%43 HTTP/1.1\r\n"); // ABC
+    test("GET /%%%% HTTP/1.1\r\n");
+    test("GET /%20%20%20 HTTP/1.1\r\n");
     return 0;
 }

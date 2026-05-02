@@ -1,4 +1,5 @@
 #include "request.hpp"
+#include <cstddef>
 #include <vector>
 
 /**
@@ -191,6 +192,58 @@ void Request::setError(int error_code)
 }
 
 /**
+ * Extract the path and query components from the URI.
+ */
+void Request::extractPathAndQuery(void)
+{
+    size_t pos = m_uri.find('?');
+    if (pos != std::string::npos)
+    {
+        m_path  = m_uri.substr(0, pos);
+        m_query = m_uri.substr(pos + 1);
+    }
+    else
+    {
+        m_path  = m_uri;
+        m_query = "";
+    }
+}
+
+/**
+ * Decode a percent-encoded URI string.
+ * @uri: The percent-encoded URI to decode.
+ * @decoded_uri: Reference to a string where the decoded URI will be stored.
+ * Return: True if decoding was successful, false if there was an error (e.g., invalid encoding).
+ */
+bool Request::decodeURI(const std::string &uri, std::string &decoded_uri)
+{
+    decoded_uri.clear();
+    for (size_t i = 0; i < uri.length(); ++i)
+    {
+        if (uri[i] == '%')
+        {
+            if (i + 2 >= uri.length())
+            {
+                return false;
+            }
+            int high = hexToInt(uri[i + 1]);
+            int low  = hexToInt(uri[i + 2]);
+            if (high == -1 || low == -1)
+            {
+                return false;
+            }
+            decoded_uri += static_cast<char>(high * 16 + low);
+            i += 2;
+        }
+        else
+        {
+            decoded_uri += uri[i];
+        }
+    }
+    return true;
+}
+
+/**
  * Parse the request line of the HTTP request, extracting the method, URI, and version.
  */
 void Request::parseRequestLine()
@@ -263,7 +316,13 @@ void Request::parseRequestLine()
             return;
         }
     }
-    // Split the URI into path and query components here if needed (not implemented yet)q
+    std::string decoded_uri;
+    if (!decodeURI(m_uri, decoded_uri))
+    {
+        setError(BAD_REQUEST);
+        return;
+    }
+    m_uri = decoded_uri;
 
     if (m_version != "HTTP/1.0" && m_version != "HTTP/1.1")
     {

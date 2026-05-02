@@ -61,3 +61,19 @@ bool isAllUpper(const std::string &str)
     }
     return true;
 }
+
+/**
+ * hexToInt - Converts a hexadecimal character to its integer value.
+ * @c: The hexadecimal character to be converted (0-9, a-f, A-F).
+ * Return: The integer value of the hexadecimal character, or -1 if invalid.
+ */
+int hexToInt(char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return -1;
+}
