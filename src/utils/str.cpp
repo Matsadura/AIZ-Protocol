@@ -46,3 +46,18 @@ std::string trim(const std::string &str)
     size_t last = str.find_last_not_of(" \t\n\r\f\v");
     return str.substr(first, last - first + 1);
 }
+
+/**
+ * isAllUpper - Checks if a string consists entirely of uppercase letters.
+ * @str: The input string to be checked.
+ * Return: true if the string is all uppercase, false otherwise.
+ */
+bool isAllUpper(const std::string &str)
+{
+    for (size_t i = 0; i < str.length(); ++i)
+    {
+        if (!std::isupper(static_cast<unsigned char>(str[i])))
+            return false;
+    }
+    return true;
+}

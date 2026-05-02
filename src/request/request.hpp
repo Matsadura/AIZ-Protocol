@@ -1,11 +1,21 @@
 #ifndef REQUEST_HPP
 #define REQUEST_HPP
 
+#include <algorithm>
 #include <cstddef>
+#include <iterator>
 #include <map>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include "../utils/utils.hpp"
+
+#define CRLF "\r\n"
+#define BAD_REQUEST 400
+#define METHOD_NOT_ALLOWED 405
+#define PAYLOAD_TOO_LARGE 413
+#define NOT_IMPLEMENTED 501
 
 class Request
 {
@@ -34,6 +44,7 @@ class Request
     void appendData(const char *data, size_t length);
     void setMaxBodySize(size_t max_size);
 
+    void setError(int error_code);
     ParserState getState() const;
     int getErrorCode() const;
     bool isComplete() const;
@@ -44,6 +55,7 @@ class Request
     std::string getHeader(const std::string &key) const;
     std::map<std::string, std::string> getHeaders() const;
     const std::vector<char> &getBody() const;
+    void parseRequestLine();
 
   private:
     ParserState m_state;
@@ -66,13 +78,12 @@ class Request
     size_t m_current_chunk_size;
     size_t m_chunk_bytes_read;
 
-    void parseRequestLine();
     void parseHeaders();
     void parseBody();
     void parseChunkedBody();
 
     std::string decodeURI(const std::string &uri);
-    void exctractPathAndQuery();
+    void extractPathAndQuery();
 };
 
 #endif /* REQUEST_HPP */

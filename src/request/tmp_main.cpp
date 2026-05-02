@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <utility>
 
+#include "request.hpp"
+
 #define PORT 8080
 #define BUFFER_SIZE 30000
 
@@ -82,6 +84,13 @@ int main()
             // request.feedData(buffer, valread);
             // std::cout << "Parsed Method: " << request.getMethod() << std::endl;
             // ---------------------------------------------------------
+            Request request;
+            request.appendData(buffer, valread);
+            request.parseRequestLine();
+            std::cout << "Parsed Method: " << request.getMethod() << std::endl;
+            std::cout << "Parsed URI: " << request.getURI() << std::endl;
+            std::cout << "Parsed Version: " << request.getVersion() << std::endl;
+            std::cout << "Request State: " << request.getState() << std::endl;
         }
 
         // Send a valid, hardcoded HTTP response so the browser doesn't hang
