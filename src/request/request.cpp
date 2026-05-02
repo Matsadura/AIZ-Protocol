@@ -1,4 +1,5 @@
 #include "request.hpp"
+#include <vector>
 
 /**
  * Constructor for the Request class.
@@ -202,10 +203,12 @@ void Request::parseRequestLine()
         return;
     for (size_t i = 0; i < pos; ++i)
     {
-        if (m_raw_buffer[i] == '\r' || m_raw_buffer[i] == '\n')
         {
-            setError(BAD_REQUEST);
-            return;
+            if (m_raw_buffer[i] == '\r' || m_raw_buffer[i] == '\n')
+            {
+                setError(BAD_REQUEST);
+                return;
+            }
         }
     }
 
@@ -224,7 +227,6 @@ void Request::parseRequestLine()
         setError(BAD_REQUEST);
         return;
     }
-
     m_method  = tokens[0];
     m_uri     = tokens[1];
     m_version = tokens[2];
@@ -250,6 +252,11 @@ void Request::parseRequestLine()
         return;
     }
 
+    if (m_uri.empty() || m_uri[0] != '/')
+    {
+        setError(BAD_REQUEST);
+        return;
+    }
     for (size_t i = 0; i < m_uri.size(); ++i)
     {
         if (m_uri[i] <= 31 || m_uri[i] == 127)
@@ -258,6 +265,7 @@ void Request::parseRequestLine()
             return;
         }
     }
+    // Split the URI into path and query components here if needed (not implemented yet)q
 
     if (m_version != "HTTP/1.0" && m_version != "HTTP/1.1")
     {

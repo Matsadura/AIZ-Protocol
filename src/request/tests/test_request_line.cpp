@@ -12,6 +12,7 @@ void test(const std::string &input)
     std::cout << "Method: " << req.getMethod() << "\n";
     std::cout << "URI: " << req.getURI() << "\n";
     std::cout << "Version: " << req.getVersion() << "\n";
+    std::cout << "Error Code: " << req.getErrorCode() << "\n";
     std::cout << "----------------------\n";
 }
 
@@ -32,5 +33,12 @@ int main()
     test(
         "GET /index.html HTTP/1.1\r\nHeader: Value with spaces\r\nAnotherHeader: AnotherValue with spaces\r\n\r\n"); // Valid request line with headers that contain spaces
 
+    test("GET   /index.html   HTTP/1.1\r\n"); // Valid request line with extra spaces (should be trimmed)
+    test("FAKE / HTTP/1.1\r\n");              // Invalid method
+    test("PUT / HTTP/1.1\r\n");               // Unsupported method (not GET, POST, or DELETE)
+    test("GET /index.html HTTP/1.2\r\n");     // Invalid HTTP version
+    test("GET hello HTTP/1.1\r\n");           // Invalid URI (does not start with '/')
+    test("GET /he\x01llo HTTP/1.1\r\n");      // Invalid URI (contains control character)
+    test("GET / HTTP/1.1\rBAD\n\r\n");        // Invalid request line with CRLF in the middle
     return 0;
 }
