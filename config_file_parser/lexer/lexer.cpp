@@ -53,7 +53,7 @@ s_token lexer::createToken(const std::string &value, t_type type) const
  * tokenize the config file
  * Returns: a vector of tokens
  */
-std::vector<s_token> lexer::tokenize()
+std::vector<s_token> &lexer::tokenize()
 {
     tokens.clear();
     m_pos  = 0;
@@ -94,7 +94,6 @@ std::vector<s_token> lexer::tokenize()
     }
     return tokens;
 }
-
 
 /**
  * Helper function that collects a WORD or NUMBER from

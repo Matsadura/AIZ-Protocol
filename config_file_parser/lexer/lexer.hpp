@@ -41,7 +41,7 @@ class lexer
     lexer(const std::string &file_name);
     ~lexer();
     std::vector<s_token> tokens;
-    std::vector<s_token> tokenize();
+    std::vector<s_token> &tokenize();
 
   private:
     // helpers
