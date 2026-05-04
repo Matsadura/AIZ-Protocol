@@ -1,6 +1,6 @@
 #include "lexer.hpp"
 
-void print_tokens(const std::vector<t_token>& tokens)
+void print_tokens(const std::vector<t_token> &tokens)
 {
     for (size_t i = 0; i < tokens.size(); i++)
     {
