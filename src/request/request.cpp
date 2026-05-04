@@ -407,6 +407,8 @@ void Request::parseHeaders(void)
         m_headers[key] = value;
     }
 
+    m_state = BODY;
+
     if (m_version == "HTTP/1.1" && m_headers.find("host") == m_headers.end())
     {
         setError(BAD_REQUEST);
