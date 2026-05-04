@@ -1,7 +1,7 @@
 #include <iostream>
 #include "lexer.hpp"
 
-void print_tokens(const std::vector<token>& tokens)
+void print_tokens(const std::vector<t_token>& tokens)
 {
     for (size_t i = 0; i < tokens.size(); i++)
     {
@@ -34,8 +34,9 @@ int main(int argc, char **argv)
 
     try
     {
-        lexer lx(argv[1]);
-        std::vector<token> tokens = lx.tokenize();
+        std::string file_name = argv[1];
+        lexer lx(file_name);
+        std::vector<t_token> tokens = lx.tokenize();
 
         print_tokens(tokens);
     }

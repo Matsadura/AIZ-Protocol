@@ -1,9 +1,9 @@
 #pragma once
 
-#include "iostream"
-#include "vector"
-#include "fstream"
-#include "iterator"
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <iterator>
 enum t_type
 {
     LBRACE,
@@ -12,7 +12,8 @@ enum t_type
     WORD,
     NUMBER,
     UNKNOWN,
-    EOF_TOKEN
+    EOF_TOKEN,
+    TOKEN_NONE
 };
 
 struct t_token
@@ -20,6 +21,7 @@ struct t_token
     t_type type;
     std::string value;
     int line;
+    t_token() : type(TOKEN_NONE), line(0) {}
 };
 
 class lexer
@@ -38,6 +40,6 @@ class lexer
         int    collect_digits(std::string str);
         void    collect_words();
         bool    isWordChar(char c);
-        struct t_token    createToken(const std::string &value, t_type type) const;
+        t_token    createToken(const std::string &value, t_type type) const;
 
 };
