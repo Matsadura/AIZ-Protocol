@@ -12,17 +12,10 @@ lexer::lexer(const std::string &file_name) : m_pos(0), m_line(1)
     std::ifstream file(file_name.c_str());
 
     if (!file)
-<<<<<<< HEAD
         throw std::runtime_error("Cannot open file" + file_name);
     m_file_content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
     if (m_file_content.empty())
         throw std::runtime_error("Empty file" + file_name);
-=======
-        throw std::runtime_error("Cannot open file: " + file_name);
-    m_file_content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-    if (m_file_content.empty())
-        throw std::runtime_error("Empty file: " + file_name);
->>>>>>> 68f66a54a511b5ff29840a658c51d50ad61a56ce
 }
 
 /**
