@@ -4,6 +4,9 @@
 #include <vector>
 #include <fstream>
 #include <iterator>
+#include <stdexcept>
+#include <string>
+
 enum t_type
 {
     LBRACE,
@@ -31,7 +34,7 @@ class lexer
         size_t m_pos;
         int m_line;
     public:
-        lexer(std::string &file_name);
+        lexer(const std::string &file_name);
         ~lexer();
         std::vector<t_token> tokens;
         std::vector<t_token>  tokenize();

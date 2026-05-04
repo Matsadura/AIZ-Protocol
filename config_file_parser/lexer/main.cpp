@@ -1,4 +1,3 @@
-#include <iostream>
 #include "lexer.hpp"
 
 void print_tokens(const std::vector<t_token>& tokens)

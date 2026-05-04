@@ -4,7 +4,7 @@
  * constructor
  * @file_name: The configuration file name
  */
-lexer::lexer(std::string &file_name) : m_pos(0), m_line(0)
+lexer::lexer(const std::string &file_name) : m_pos(0), m_line(1)
 {
     std::ifstream file(file_name.c_str());
     
@@ -26,7 +26,7 @@ lexer::~lexer(){}
  */
 bool    lexer::isWordChar(char c)
 {
-    return std::isalnum(c) || c == '_' || c == '.' || c == '/' || c == ':' || c == '-';
+    return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '.' || c == '/' || c == ':' || c == '-';
 }
 
 /**
@@ -48,10 +48,13 @@ t_token    lexer::createToken(const std::string &value, t_type type) const
  */
 std::vector<t_token>  lexer::tokenize()
 {
+    tokens.clear();
+    m_pos = 0;
+    m_line = 0;
     while (m_pos < m_file_content.size())
     {
         char current = m_file_content[m_pos];
-        if (isspace(current)) {
+        if (isspace(static_cast<unsigned char>(current))) {
             if (current == '\n') m_line++;
             m_pos++;
             continue;
@@ -91,7 +94,7 @@ int    lexer::collect_digits(std::string str)
 {
     t_token obj;
 
-    for(int i = 0; str[i]; i++)
+    for(size_t i = 0; i < str.size() ;i++)
     {
         if(!isdigit(static_cast<unsigned char>(str[i])))
             return 0;
@@ -107,7 +110,6 @@ int    lexer::collect_digits(std::string str)
 void    lexer::collect_words()
 {
     std::string value;
-    t_token obj;
 
     while(m_pos < m_file_content.size() && isWordChar(m_file_content[m_pos]) )
     {
