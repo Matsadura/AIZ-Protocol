@@ -19,13 +19,13 @@ enum t_type
     TOKEN_NONE
 };
 
-struct t_token
+struct s_token
 {
     t_type type;
     std::string value;
     int line;
 
-    t_token() : type(TOKEN_NONE), line(0)
+    s_token() : type(TOKEN_NONE), line(0)
     {
     }
 };
@@ -40,13 +40,13 @@ class lexer
   public:
     lexer(const std::string &file_name);
     ~lexer();
-    std::vector<t_token> tokens;
-    std::vector<t_token> tokenize();
+    std::vector<s_token> tokens;
+    std::vector<s_token> tokenize();
 
   private:
     // helpers
     int collect_digits(std::string str);
     void collect_words();
     bool isWordChar(char c);
-    t_token createToken(const std::string &value, t_type type) const;
+    s_token createToken(const std::string &value, t_type type) const;
 };

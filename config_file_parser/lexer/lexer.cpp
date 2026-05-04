@@ -36,9 +36,9 @@ bool lexer::isWordChar(char c)
  * @value = the value of the token
  * @type = type of the token
  */
-t_token lexer::createToken(const std::string &value, t_type type) const
+s_token lexer::createToken(const std::string &value, t_type type) const
 {
-    t_token obj;
+    s_token obj;
     obj.type  = type;
     obj.line  = m_line;
     obj.value = value;
@@ -48,7 +48,7 @@ t_token lexer::createToken(const std::string &value, t_type type) const
 /**
  * tokenizer
  */
-std::vector<t_token> lexer::tokenize()
+std::vector<s_token> lexer::tokenize()
 {
     tokens.clear();
     m_pos  = 0;
@@ -96,7 +96,7 @@ std::vector<t_token> lexer::tokenize()
  */
 int lexer::collect_digits(std::string str)
 {
-    t_token obj;
+    s_token obj;
 
     for (size_t i = 0; i < str.size(); i++)
     {
