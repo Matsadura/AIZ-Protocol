@@ -370,11 +370,18 @@ void Request::parseHeaders(void)
             return;
         }
 
-        std::string host = toLower() if (toLower(key) == "Host") // Host header is mandatory in HTTP/1.1 (unfinished)
+        if (m_version == "HTTP/1.1" && toLower(key) == "host")
+        {
+            if (value.empty())
+            {
+                setError(BAD_REQUEST);
+                return;
+            }
+        }
 
-            key = trim(key);
-        value   = trim(value);
-        key     = toLower(key);
+        key   = trim(key);
+        value = trim(value);
+        key   = toLower(key);
 
         if (isDuplicateHeader(m_headers, key))
         {
@@ -391,6 +398,18 @@ void Request::parseHeaders(void)
             }
         }
 
+        if (value.size() > 8192)
+        {
+            setError(BAD_REQUEST);
+            return;
+        }
+
         m_headers[key] = value;
+    }
+
+    if (m_version == "HTTP/1.1" && m_headers.find("host") == m_headers.end())
+    {
+        setError(BAD_REQUEST);
+        return;
     }
 }

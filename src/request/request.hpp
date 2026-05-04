@@ -17,6 +17,7 @@
 #define BAD_REQUEST 400
 #define METHOD_NOT_ALLOWED 405
 #define PAYLOAD_TOO_LARGE 413
+#define HEADER_TOO_LARGE 431
 #define NOT_IMPLEMENTED 501
 
 class Request
