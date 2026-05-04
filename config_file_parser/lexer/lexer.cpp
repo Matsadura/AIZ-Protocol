@@ -1,8 +1,10 @@
 #include "lexer.hpp"
 
 /**
- * constructor
- * @file_name: The configuration file name
+ * Constructor that reads the content of the config file
+ * and stores it in a string
+ * @file_name: the name of the config file
+ * Throws: runtime_error if the file cannot be opened or is empty
  */
 lexer::lexer(const std::string &file_name) : m_pos(0), m_line(1)
 {
@@ -23,8 +25,8 @@ lexer::~lexer()
 }
 
 /**
- * Helper function that detects valid characters
- * @c = the character
+ * Helper function that checks if a character is a valid WORD character
+ * @c: The character to check
  */
 bool lexer::isWordChar(char c)
 {
@@ -33,8 +35,9 @@ bool lexer::isWordChar(char c)
 
 /**
  * create tokens
- * @value = the value of the token
- * @type = type of the token
+ * @value: the value of the token
+ * @type: type of the token
+ * Returns: a token object
  */
 s_token lexer::createToken(const std::string &value, t_type type) const
 {
@@ -46,7 +49,8 @@ s_token lexer::createToken(const std::string &value, t_type type) const
 }
 
 /**
- * tokenizer
+ * tokenize the config file
+ * Returns: a vector of tokens
  */
 std::vector<s_token> lexer::tokenize()
 {
@@ -92,7 +96,9 @@ std::vector<s_token> lexer::tokenize()
 
 /**
  * Helper function that collects a NUMBER from
- * the config  file
+ * the config file and check if it's a number
+ * @str: the string to check
+ * Returns: 1 if it's a number, 0 otherwise
  */
 int lexer::collect_digits(std::string str)
 {

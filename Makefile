@@ -5,10 +5,11 @@ SRC= $(shell find . -name "*.cpp")
 OBJ= $(SRC:%.cpp=%.o)
 RM = rm -f
 
+all : $(NAME)
+
 %.o : %.cpp
 	$(CPP) $(CPPFLAGS) -c $< -o $@
 
-all : $(NAME)
 
 $(NAME) : $(OBJ)
 	$(CPP) $(CPPFLAGS) $(OBJ) -o $@
@@ -21,3 +22,4 @@ fclean : clean
 
 re : fclean all
 
+.PHONY: all clean fclean re
