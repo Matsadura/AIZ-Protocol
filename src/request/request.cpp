@@ -323,6 +323,7 @@ void Request::parseRequestLine()
         return;
     }
     m_uri = decoded_uri;
+    extractPathAndQuery();
 
     if (m_version != "HTTP/1.0" && m_version != "HTTP/1.1")
     {
@@ -331,4 +332,63 @@ void Request::parseRequestLine()
     }
 
     m_state = HEADERS;
+}
+
+void Request::parseHeaders(void)
+{
+    if (m_state != HEADERS)
+        return;
+
+    while (true)
+    {
+        size_t pos = m_raw_buffer.find(CRLF);
+        if (pos == std::string::npos)
+            return;
+
+        std::string line = m_raw_buffer.substr(0, pos);
+        m_raw_buffer.erase(0, pos + 2);
+
+        if (line.empty())
+        {
+            m_state = BODY;
+            return;
+        }
+
+        size_t colon_pos = line.find(':');
+        if (colon_pos == std::string::npos)
+        {
+            setError(BAD_REQUEST);
+            return;
+        }
+
+        std::string key   = line.substr(0, colon_pos);
+        std::string value = line.substr(colon_pos + 1);
+
+        if (key.empty())
+        {
+            setError(BAD_REQUEST);
+            return;
+        }
+
+        key   = trim(key);
+        value = trim(value);
+        key   = toLower(key);
+
+        if (isDuplicateHeader(m_headers, key))
+        {
+            setError(BAD_REQUEST);
+            return;
+        }
+
+        if (key == "content-length") // Content-Length should be a valid number (unfinished)
+        {
+            if (isAlphaNumeric(value) == false)
+            {
+                setError(BAD_REQUEST);
+                return;
+            }
+        }
+
+        m_headers[key] = value;
+    }
 }
