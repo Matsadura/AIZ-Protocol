@@ -1,5 +1,5 @@
 CPP=c++
-CPPFLAGS= -Wall -Wextra -Werror -std=c++98
+CPPFLAGS= -Wall -Wextra -Werror -std=c++98 -Wunused-variable
 NAME = webserv
 SRC= $(shell find . -name "*.cpp")
 OBJ= $(SRC:%.cpp=%.o)
