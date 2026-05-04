@@ -45,8 +45,8 @@ class lexer
 
   private:
     // helpers
-    int collect_digits(std::string str);
-    void collect_words();
+    int collect_digits(std::string &str);
+    void collect_words_and_numbers();
     bool isWordChar(char c);
     s_token createToken(const std::string &value, t_type type) const;
 };

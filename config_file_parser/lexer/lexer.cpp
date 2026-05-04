@@ -1,4 +1,5 @@
 #include "lexer.hpp"
+#include <iostream>
 
 /**
  * Constructor that reads the content of the config file
@@ -56,7 +57,7 @@ std::vector<s_token> lexer::tokenize()
 {
     tokens.clear();
     m_pos  = 0;
-    m_line = 0;
+    m_line = 1;
     while (m_pos < m_file_content.size())
     {
         char current = m_file_content[m_pos];
@@ -81,7 +82,7 @@ std::vector<s_token> lexer::tokenize()
         }
         else if (isWordChar(current))
         {
-            collect_words();
+            collect_words_and_numbers();
             continue;
         }
         else
@@ -94,39 +95,25 @@ std::vector<s_token> lexer::tokenize()
     return tokens;
 }
 
-/**
- * Helper function that collects a NUMBER from
- * the config file and check if it's a number
- * @str: the string to check
- * Returns: 1 if it's a number, 0 otherwise
- */
-int lexer::collect_digits(std::string str)
-{
-    s_token obj;
-
-    for (size_t i = 0; i < str.size(); i++)
-    {
-        if (!isdigit(static_cast<unsigned char>(str[i])))
-            return 0;
-    }
-    tokens.push_back(createToken(str, NUMBER));
-    return 1;
-}
 
 /**
- * Helper function that collects a WORD from
- * the config file and check if it's a number
+ * Helper function that collects a WORD or NUMBER from
+ * the config file
  */
-void lexer::collect_words()
+void lexer::collect_words_and_numbers()
 {
     std::string value;
+    int flag = 0;
 
     while (m_pos < m_file_content.size() && isWordChar(m_file_content[m_pos]))
     {
         value += m_file_content[m_pos];
+        if (isdigit(static_cast<unsigned char>(m_file_content[m_pos])) == 0 && !flag)
+            flag = 1;
         m_pos++;
     }
-    if (collect_digits(value))
-        return;
-    tokens.push_back(createToken(value, WORD));
+    if (flag == 0)
+        tokens.push_back(createToken(value, NUMBER));
+    else
+        tokens.push_back(createToken(value, WORD));
 }
