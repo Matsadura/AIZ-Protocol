@@ -107,13 +107,13 @@ bool isDuplicateHeader(const std::map<std::string, std::string> &headers, const 
 /**
  * isAlphaNumeric - Checks if a string consists entirely of alphanumeric characters.
  * @str: The input string to be checked.
- * Return: true if the string is alphanumeric, false otherwise.
+ * Return: true if the string is numeric, false otherwise.
  */
-bool isAlphaNumeric(const std::string &str)
+bool isNumeric(const std::string &str)
 {
     for (size_t i = 0; i < str.length(); ++i)
     {
-        if (!std::isalnum(static_cast<unsigned char>(str[i])))
+        if (!std::isdigit(static_cast<unsigned char>(str[i])))
             return false;
     }
     return true;

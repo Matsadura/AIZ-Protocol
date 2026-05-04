@@ -370,9 +370,11 @@ void Request::parseHeaders(void)
             return;
         }
 
-        key   = trim(key);
-        value = trim(value);
-        key   = toLower(key);
+        std::string host = toLower() if (toLower(key) == "Host") // Host header is mandatory in HTTP/1.1 (unfinished)
+
+            key = trim(key);
+        value   = trim(value);
+        key     = toLower(key);
 
         if (isDuplicateHeader(m_headers, key))
         {
@@ -380,9 +382,9 @@ void Request::parseHeaders(void)
             return;
         }
 
-        if (key == "content-length") // Content-Length should be a valid number (unfinished)
+        if (key == "content-length")
         {
-            if (isAlphaNumeric(value) == false)
+            if (isNumeric(value) == false)
             {
                 setError(BAD_REQUEST);
                 return;
