@@ -1,4 +1,6 @@
 #include "lexer.hpp"
+#include "../parser/parser.hpp"
+#include <vector>
 
 void print_tokens(const std::vector<s_token> &tokens)
 {
@@ -23,6 +25,19 @@ void print_tokens(const std::vector<s_token> &tokens)
     }
 }
 
+std::vector<parser> parse(const std::vector<s_token> &tokens, int &index)
+{
+    std::vector<parser> vector;
+    while(index < (int)tokens.size())
+    {
+        parser obj;
+        obj.parse_directive(tokens, index);
+        vector.push_back(obj);
+
+    }
+    return vector;
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -36,8 +51,11 @@ int main(int argc, char **argv)
         std::string file_name = argv[1];
         lexer lx(file_name);
         std::vector<s_token> tokens = lx.tokenize();
-
-        print_tokens(tokens);
+        int i = 0;
+        std::vector<parser> vector = parse(tokens, i);
+        
+        
+        // print_tokens(tokens);
     }
     catch (std::exception &e)
     {
