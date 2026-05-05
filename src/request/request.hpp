@@ -44,7 +44,7 @@ class Request
     Request &operator=(const Request &other);
     ~Request(void);
 
-    void appendData(const char *data, size_t length);
+    void appendDataAndParse(const char *data, size_t length);
     void setMaxBodySize(size_t max_size);
 
     void setError(int error_code);
@@ -58,9 +58,6 @@ class Request
     std::string getHeader(const std::string &key) const;
     std::map<std::string, std::string> getHeaders(void) const;
     const std::vector<char> &getBody(void) const;
-
-    void parseRequestLine(void);
-    void parseHeaders(void);
 
   private:
     ParserState m_state;
@@ -83,11 +80,23 @@ class Request
     size_t m_current_chunk_size;
     size_t m_chunk_bytes_read;
 
+    void parseRequestLine(void);
+    void parseHeaders(void);
     void parseBody(void);
     void parseChunkedBody(void);
 
     bool decodeURI(const std::string &uri, std::string &decoded_uri);
     void extractPathAndQuery(void);
+
+    /* Helper functions for header parsing and validation */
+
+    bool validateHeaderKeyFormat(const std::string &key);
+    bool validateHeaderKeyNotEmpty(const std::string &key);
+    bool validateHeaderValueSize(const std::string &value);
+    bool validateHeaderHost(const std::string &key, const std::string &value);
+    bool validateHeaderDuplicates(const std::string &key, std::string &value);
+    bool validateHeaderContentLength(const std::string &key, const std::string &value);
+    bool validateHTTP11Host(void);
 };
 
 #endif /* REQUEST_HPP */

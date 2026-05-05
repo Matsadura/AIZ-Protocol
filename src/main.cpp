@@ -85,8 +85,7 @@ int main()
             // std::cout << "Parsed Method: " << request.getMethod() << std::endl;
             // ---------------------------------------------------------
             Request request;
-            request.appendData(buffer, valread);
-            request.parseRequestLine();
+            request.appendDataAndParse(buffer, valread);
             std::cout << "Parsed Method: " << request.getMethod() << std::endl;
             std::cout << "Parsed URI: " << request.getURI() << std::endl;
             std::cout << "Parsed Version: " << request.getVersion() << std::endl;

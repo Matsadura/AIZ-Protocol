@@ -82,9 +82,12 @@ Request::~Request(void)
  * @data: Pointer to the data to append.
  * @length: Length of the data to append.
  */
-void Request::appendData(const char *data, size_t length)
+void Request::appendDataAndParse(const char *data, size_t length)
 {
     m_raw_buffer.append(data, length);
+    parseRequestLine();
+    parseHeaders();
+    // parseBody();
 }
 
 /**
@@ -373,65 +376,145 @@ void Request::parseHeaders(void)
         std::string key   = line.substr(0, colon_pos);
         std::string value = line.substr(colon_pos + 1);
 
-        if (!key.empty() && (key[key.size() - 1] == ' ' || key[key.size() - 1] == '\t'))
-        {
-            setError(BAD_REQUEST);
+        if (!validateHeaderKeyFormat(key))
             return;
-        }
 
         key   = toLower(trim(key));
         value = trim(value);
 
-        if (key.empty())
-        {
-            setError(BAD_REQUEST);
+        if (!validateHeaderKeyNotEmpty(key))
             return;
-        }
 
-        if (m_version == "HTTP/1.1" && key == "host")
-        {
-            if (value.empty())
-            {
-                setError(BAD_REQUEST);
-                return;
-            }
-        }
-
-        if (value.size() > 8192)
-        {
-            setError(BAD_REQUEST);
+        if (!validateHeaderValueSize(value))
             return;
-        }
 
-        if (m_headers.find(key) != m_headers.end())
-        {
-            if (key == "host" || key == "content-length")
-            {
-                setError(BAD_REQUEST);
-                return;
-            }
-            m_headers[key] += ", " + value;
-        }
-        else
-        {
-            m_headers[key] = value;
-        }
+        if (!validateHeaderHost(key, value))
+            return;
 
-        if (key == "content-length")
-        {
-            if (isNumeric(value) == false)
-            {
-                setError(BAD_REQUEST);
-                return;
-            }
-        }
+        if (!validateHeaderDuplicates(key, value))
+            return;
+
+        if (!validateHeaderContentLength(key, value))
+            return;
     }
 
     m_state = BODY;
 
+    if (!validateHTTP11Host())
+        return;
+}
+
+/**
+ * Validate that the header key is not empty and has not invalid white space before trimming.
+ * @key: The header key to validate.
+ * Return: True if the header key is valid (not empty), false if it is empty.
+ */
+bool Request::validateHeaderKeyFormat(const std::string &key)
+{
+    if (!key.empty() && (key[key.size() - 1] == ' ' || key[key.size() - 1] == '\t'))
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Validate that the header key is not empty after trimming.
+ * @key: The header key to validate.
+ * Return: True if the header key is valid (not empty), false if it is empty.
+ */
+bool Request::validateHeaderKeyNotEmpty(const std::string &key)
+{
+    if (key.empty())
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Validate that the header value does not exceed a reasonable size limit (e.g., 8192 bytes).
+ * @value: The header value to validate.
+ * Return: True if the header value size is valid, false if it exceeds the limit.
+ */
+bool Request::validateHeaderValueSize(const std::string &value)
+{
+    if (value.size() > 8192)
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Validate that the Host header exists and is not empty for HTTP/1.1 requests.
+ * @key: The header key being validated.
+ * @value: The header value being validated.
+ * Return: True if the Host header is valid, false if it is invalid (e.g., empty for HTTP/1.1).
+ */
+bool Request::validateHeaderHost(const std::string &key, const std::string &value)
+{
+    if (m_version == "HTTP/1.1" && key == "host" && value.empty())
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Validate that certain headers (like Host and Content-Length) are not duplicated, and merge others if they are.
+ * @key: The header key being validated.
+ * @value: The header value being validated.
+ * Return: True if the header is valid and processed successfully, false if there was an error (e.g., duplicate Host).
+ */
+bool Request::validateHeaderDuplicates(const std::string &key, std::string &value)
+{
+    if (m_headers.find(key) != m_headers.end())
+    {
+        if (key == "host" || key == "content-length")
+        {
+            setError(BAD_REQUEST);
+            return false;
+        }
+        m_headers[key] += ", " + value;
+    }
+    else
+    {
+        m_headers[key] = value;
+    }
+    return true;
+}
+
+/**
+ * Validate that the Content-Length header value is numeric if present.
+ * @key: The header key being validated.
+ * @value: The header value being validated.
+ * Return: True if the Content-Length value is valid or if the header is not Content-Length, false if invalid.
+ */
+bool Request::validateHeaderContentLength(const std::string &key, const std::string &value)
+{
+    if (key == "content-length" && !isNumeric(value))
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Validate that HTTP/1.1 requests contain a Host header.
+ * Return: True if the Host header is present for HTTP/1.1 requests, false otherwise.
+ */
+bool Request::validateHTTP11Host(void)
+{
     if (m_version == "HTTP/1.1" && m_headers.find("host") == m_headers.end())
     {
         setError(BAD_REQUEST);
-        return;
+        return false;
     }
+    return true;
 }

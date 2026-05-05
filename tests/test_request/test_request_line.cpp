@@ -3,9 +3,7 @@
 void test(const std::string &input)
 {
     Request req;
-    req.appendData(input.c_str(), input.size());
-
-    req.parseRequestLine();
+    req.appendDataAndParse(input.c_str(), input.size());
 
     std::cout << "Input: [" << input << "]\n";
     std::cout << "State: " << req.getState() << "\n";

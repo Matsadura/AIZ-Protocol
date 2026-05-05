@@ -5,16 +5,7 @@
 void test(const std::string &input)
 {
     Request req;
-    req.appendData(input.c_str(), input.size());
-
-    // Parse the request line first to set m_state to HEADERS
-    req.parseRequestLine();
-
-    // If request line parsing didn't fail, parse the headers
-    if (req.getErrorCode() == 0) // Assuming 0 means no error
-    {
-        req.parseHeaders();
-    }
+    req.appendDataAndParse(input.c_str(), input.size());
 
     std::cout << "Input: [" << input << "]\n";
     std::cout << "State: " << req.getState() << "\n";
