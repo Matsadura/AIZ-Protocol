@@ -12,10 +12,10 @@ lexer::lexer(const std::string &file_name) : m_pos(0), m_line(1)
     std::ifstream file(file_name.c_str());
 
     if (!file)
-        throw std::runtime_error("Cannot open file" + file_name);
+        throw std::runtime_error("Cannot open file " + file_name);
     m_file_content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
     if (m_file_content.empty())
-        throw std::runtime_error("Empty file" + file_name);
+        throw std::runtime_error("Empty file " + file_name);
 }
 
 /**
@@ -115,4 +115,31 @@ void lexer::collect_words_and_numbers()
         tokens.push_back(createToken(value, NUMBER));
     else
         tokens.push_back(createToken(value, WORD));
+}
+
+/**
+ * Helper function to print the tokens (for debugging)
+ * @tokens: the vector of tokens to print
+ */
+void lexer::print_tokens(const std::vector<s_token> &tokens)
+{
+    for (size_t i = 0; i < tokens.size(); i++)
+    {
+        std::cout << "line " << tokens[i].line << " | ";
+
+        if (tokens[i].type == LBRACE)
+            std::cout << "LBRACE";
+        else if (tokens[i].type == RBRACE)
+            std::cout << "RBRACE";
+        else if (tokens[i].type == SEMICOLON)
+            std::cout << "SEMICOLON";
+        else if (tokens[i].type == NUMBER)
+            std::cout << "NUMBER";
+        else if (tokens[i].type == WORD)
+            std::cout << "WORD";
+        else if (tokens[i].type == UNKNOWN)
+            std::cout << "UNKNOWN";
+
+        std::cout << " | value: [" << tokens[i].value << "]\n";
+    }
 }

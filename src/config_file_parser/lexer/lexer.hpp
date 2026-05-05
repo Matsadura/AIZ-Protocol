@@ -42,11 +42,12 @@ class lexer
     ~lexer();
     std::vector<s_token> tokens;
     std::vector<s_token> &tokenize();
-
+    
   private:
     // helpers
     int collect_digits(std::string &str);
     void collect_words_and_numbers();
     bool isWordChar(char c);
     s_token createToken(const std::string &value, t_type type) const;
+    void print_tokens(const std::vector<s_token> &tokens);
 };

@@ -1,45 +1,6 @@
-#include "lexer.hpp"
-<<<<<<< HEAD
 #include "../parser/parser.hpp"
+#include "lexer.hpp"
 #include <vector>
-=======
->>>>>>> origin/main
-
-void print_tokens(const std::vector<s_token> &tokens)
-{
-    for (size_t i = 0; i < tokens.size(); i++)
-    {
-        std::cout << "line " << tokens[i].line << " | ";
-
-        if (tokens[i].type == LBRACE)
-            std::cout << "LBRACE";
-        else if (tokens[i].type == RBRACE)
-            std::cout << "RBRACE";
-        else if (tokens[i].type == SEMICOLON)
-            std::cout << "SEMICOLON";
-        else if (tokens[i].type == NUMBER)
-            std::cout << "NUMBER";
-        else if (tokens[i].type == WORD)
-            std::cout << "WORD";
-        else if (tokens[i].type == UNKNOWN)
-            std::cout << "UNKNOWN";
-
-        std::cout << " | value: [" << tokens[i].value << "]\n";
-    }
-}
-
-std::vector<parser> parse(const std::vector<s_token> &tokens, int &index)
-{
-    std::vector<parser> vector;
-    while(index < (int)tokens.size())
-    {
-        parser obj;
-        obj.parse_directive(tokens, index);
-        vector.push_back(obj);
-
-    }
-    return vector;
-}
 
 int main(int argc, char **argv)
 {
@@ -54,11 +15,8 @@ int main(int argc, char **argv)
         std::string file_name = argv[1];
         lexer lx(file_name);
         std::vector<s_token> tokens = lx.tokenize();
-        int i = 0;
-        std::vector<parser> vector = parse(tokens, i);
-        
-        
-        // print_tokens(tokens);
+        Parser parser(tokens); // throws
+        parser.print_directives();
     }
     catch (std::exception &e)
     {
