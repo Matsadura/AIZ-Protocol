@@ -80,15 +80,24 @@ class Request
     size_t m_current_chunk_size;
     size_t m_chunk_bytes_read;
 
+    /* Core parsing functions */
+
     void parseRequestLine(void);
     void parseHeaders(void);
     void parseBody(void);
     void parseChunkedBody(void);
 
+    /* Helper functions for request line parsing and validation */
+
     bool decodeURI(const std::string &uri, std::string &decoded_uri);
     void extractPathAndQuery(void);
+    bool validateRequestLineFormat(const std::string &line);
+    bool validateRequestLinePartsCount(const std::vector<std::string> &request_line_tokens);
+    bool validateMethod(void);
+    bool validateURI(void);
+    bool validateVersion(void);
 
-    /* Helper functions for header parsing and validation */
+    /* Helper functions for header validation */
 
     bool validateHeaderKeyFormat(const std::string &key);
     bool validateHeaderKeyNotEmpty(const std::string &key);

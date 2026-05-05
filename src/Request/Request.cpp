@@ -1,4 +1,4 @@
-#include "request.hpp"
+#include "Request.hpp"
 #include <cstddef>
 #include <vector>
 
@@ -195,58 +195,6 @@ void Request::setError(int error_code)
 }
 
 /**
- * Extract the path and query components from the URI.
- */
-void Request::extractPathAndQuery(void)
-{
-    size_t pos = m_uri.find('?');
-    if (pos != std::string::npos)
-    {
-        m_path  = m_uri.substr(0, pos);
-        m_query = m_uri.substr(pos + 1);
-    }
-    else
-    {
-        m_path  = m_uri;
-        m_query = "";
-    }
-}
-
-/**
- * Decode a percent-encoded URI string.
- * @uri: The percent-encoded URI to decode.
- * @decoded_uri: Reference to a string where the decoded URI will be stored.
- * Return: True if decoding was successful, false if there was an error (e.g., invalid encoding).
- */
-bool Request::decodeURI(const std::string &uri, std::string &decoded_uri)
-{
-    decoded_uri.clear();
-    for (size_t i = 0; i < uri.length(); ++i)
-    {
-        if (uri[i] == '%')
-        {
-            if (i + 2 >= uri.length())
-            {
-                return false;
-            }
-            int high = hexToInt(uri[i + 1]);
-            int low  = hexToInt(uri[i + 2]);
-            if (high == -1 || low == -1)
-            {
-                return false;
-            }
-            decoded_uri += static_cast<char>(high * 16 + low);
-            i += 2;
-        }
-        else
-        {
-            decoded_uri += uri[i];
-        }
-    }
-    return true;
-}
-
-/**
  * Parse the request line of the HTTP request, extracting the method, URI, and version.
  */
 void Request::parseRequestLine()
@@ -257,82 +205,29 @@ void Request::parseRequestLine()
     size_t pos = m_raw_buffer.find(CRLF);
     if (pos == std::string::npos)
         return;
-    for (size_t i = 0; i < pos; ++i)
-    {
-        if (m_raw_buffer[i] == '\r' || m_raw_buffer[i] == '\n')
-        {
-            setError(BAD_REQUEST);
-            return;
-        }
-    }
 
     std::string request_line = m_raw_buffer.substr(0, pos);
     m_raw_buffer.erase(0, pos + 2);
 
-    if (request_line.empty())
-    {
-        setError(BAD_REQUEST);
+    if (!validateRequestLineFormat(request_line))
         return;
-    }
 
     std::vector<std::string> tokens = split(request_line, ' ');
-    if (tokens.size() != 3)
-    {
-        setError(BAD_REQUEST);
+    if (!validateRequestLinePartsCount(tokens))
         return;
-    }
+
     m_method  = tokens[0];
     m_uri     = tokens[1];
     m_version = tokens[2];
 
-    if (isAllUpper(m_method) == false)
-    {
-        setError(BAD_REQUEST);
+    if (!validateMethod())
         return;
-    }
 
-    if (m_method != "GET" && m_method != "POST" && m_method != "DELETE")
-    {
-        const std::string unsupported_methods[] = {"PUT", "HEAD", "PATCH", "OPTIONS", "TRACE", "CONNECT"};
-        for (size_t i = 0; i < sizeof(unsupported_methods) / sizeof(unsupported_methods[0]); ++i)
-        {
-            if (m_method == unsupported_methods[i])
-            {
-                setError(NOT_IMPLEMENTED);
-                return;
-            }
-        }
-        setError(BAD_REQUEST);
+    if (!validateURI())
         return;
-    }
 
-    if (m_uri.empty() || m_uri[0] != '/')
-    {
-        setError(BAD_REQUEST);
+    if (!validateVersion())
         return;
-    }
-    for (size_t i = 0; i < m_uri.size(); ++i)
-    {
-        if (m_uri[i] <= 31 || m_uri[i] == 127)
-        {
-            setError(BAD_REQUEST);
-            return;
-        }
-    }
-    std::string decoded_uri;
-    if (!decodeURI(m_uri, decoded_uri))
-    {
-        setError(BAD_REQUEST);
-        return;
-    }
-    m_uri = decoded_uri;
-    extractPathAndQuery();
-
-    if (m_version != "HTTP/1.0" && m_version != "HTTP/1.1")
-    {
-        setError(BAD_REQUEST);
-        return;
-    }
 
     m_state = HEADERS;
 }
@@ -402,119 +297,4 @@ void Request::parseHeaders(void)
 
     if (!validateHTTP11Host())
         return;
-}
-
-/**
- * Validate that the header key is not empty and has not invalid white space before trimming.
- * @key: The header key to validate.
- * Return: True if the header key is valid (not empty), false if it is empty.
- */
-bool Request::validateHeaderKeyFormat(const std::string &key)
-{
-    if (!key.empty() && (key[key.size() - 1] == ' ' || key[key.size() - 1] == '\t'))
-    {
-        setError(BAD_REQUEST);
-        return false;
-    }
-    return true;
-}
-
-/**
- * Validate that the header key is not empty after trimming.
- * @key: The header key to validate.
- * Return: True if the header key is valid (not empty), false if it is empty.
- */
-bool Request::validateHeaderKeyNotEmpty(const std::string &key)
-{
-    if (key.empty())
-    {
-        setError(BAD_REQUEST);
-        return false;
-    }
-    return true;
-}
-
-/**
- * Validate that the header value does not exceed a reasonable size limit (e.g., 8192 bytes).
- * @value: The header value to validate.
- * Return: True if the header value size is valid, false if it exceeds the limit.
- */
-bool Request::validateHeaderValueSize(const std::string &value)
-{
-    if (value.size() > 8192)
-    {
-        setError(BAD_REQUEST);
-        return false;
-    }
-    return true;
-}
-
-/**
- * Validate that the Host header exists and is not empty for HTTP/1.1 requests.
- * @key: The header key being validated.
- * @value: The header value being validated.
- * Return: True if the Host header is valid, false if it is invalid (e.g., empty for HTTP/1.1).
- */
-bool Request::validateHeaderHost(const std::string &key, const std::string &value)
-{
-    if (m_version == "HTTP/1.1" && key == "host" && value.empty())
-    {
-        setError(BAD_REQUEST);
-        return false;
-    }
-    return true;
-}
-
-/**
- * Validate that certain headers (like Host and Content-Length) are not duplicated, and merge others if they are.
- * @key: The header key being validated.
- * @value: The header value being validated.
- * Return: True if the header is valid and processed successfully, false if there was an error (e.g., duplicate Host).
- */
-bool Request::validateHeaderDuplicates(const std::string &key, std::string &value)
-{
-    if (m_headers.find(key) != m_headers.end())
-    {
-        if (key == "host" || key == "content-length")
-        {
-            setError(BAD_REQUEST);
-            return false;
-        }
-        m_headers[key] += ", " + value;
-    }
-    else
-    {
-        m_headers[key] = value;
-    }
-    return true;
-}
-
-/**
- * Validate that the Content-Length header value is numeric if present.
- * @key: The header key being validated.
- * @value: The header value being validated.
- * Return: True if the Content-Length value is valid or if the header is not Content-Length, false if invalid.
- */
-bool Request::validateHeaderContentLength(const std::string &key, const std::string &value)
-{
-    if (key == "content-length" && !isNumeric(value))
-    {
-        setError(BAD_REQUEST);
-        return false;
-    }
-    return true;
-}
-
-/**
- * Validate that HTTP/1.1 requests contain a Host header.
- * Return: True if the Host header is present for HTTP/1.1 requests, false otherwise.
- */
-bool Request::validateHTTP11Host(void)
-{
-    if (m_version == "HTTP/1.1" && m_headers.find("host") == m_headers.end())
-    {
-        setError(BAD_REQUEST);
-        return false;
-    }
-    return true;
 }

@@ -9,7 +9,7 @@ def send_raw_request(host, port):
     # Formulate the exact raw bytes, explicitly using \r\n
     request = (
         # "GET /?param=value HTTP/1.0\r\n"
-        r"GET /\x00 HTTP/1.1\r\n"
+        "GET /test\r\nHTTP/1.1\r\n"
         f"Host : {"A"*10}\r\n"
         f"blabla123 : {"B"*10}\r\n"
         "\r\n"
@@ -28,5 +28,5 @@ def send_raw_request(host, port):
     s.close()
 
 if __name__ == "__main__":
-    send_raw_request("localhost", 8080) # Local server test
-    # send_raw_request("54.159.165.144", 80) # Remote server test (uncomment to use)
+    # send_raw_request("localhost", 8080) # Local server test
+    send_raw_request("54.159.165.144", 80) # Remote server test (uncomment to use)

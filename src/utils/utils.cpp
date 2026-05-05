@@ -94,18 +94,7 @@ std::string toLower(const std::string &str)
 }
 
 /**
- * isDuplicateHeader - Checks if a header key already exists in the headers map.
- * @headers: The map of existing headers.
- * @key: The header key to check for duplication.
- * Return: true if the header key already exists, false otherwise.
- */
-bool isDuplicateHeader(const std::map<std::string, std::string> &headers, const std::string &key)
-{
-    return headers.find(key) != headers.end();
-}
-
-/**
- * isAlphaNumeric - Checks if a string consists entirely of alphanumeric characters.
+ * isNumeric - Checks if a string consists entirely of alphanumeric characters.
  * @str: The input string to be checked.
  * Return: true if the string is numeric, false otherwise.
  */
