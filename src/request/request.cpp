@@ -334,24 +334,33 @@ void Request::parseRequestLine()
     m_state = HEADERS;
 }
 
+/**
+ * Parse the headers of the HTTP request, extracting key-value pairs and validating them.
+ */
 void Request::parseHeaders(void)
 {
     if (m_state != HEADERS)
         return;
 
+    size_t start_pos = 0;
+
     while (true)
     {
-        size_t pos = m_raw_buffer.find(CRLF);
-        if (pos == std::string::npos)
-            return;
+        size_t pos = m_raw_buffer.find(CRLF, start_pos);
 
-        std::string line = m_raw_buffer.substr(0, pos);
-        m_raw_buffer.erase(0, pos + 2);
+        if (pos == std::string::npos)
+        {
+            m_raw_buffer.erase(0, start_pos);
+            return;
+        }
+
+        std::string line = m_raw_buffer.substr(start_pos, pos - start_pos);
+        start_pos        = pos + 2;
 
         if (line.empty())
         {
-            m_state = BODY;
-            return;
+            m_raw_buffer.erase(0, start_pos);
+            break;
         }
 
         size_t colon_pos = line.find(':');
@@ -364,34 +373,24 @@ void Request::parseHeaders(void)
         std::string key   = line.substr(0, colon_pos);
         std::string value = line.substr(colon_pos + 1);
 
+        if (!key.empty() && (key[key.size() - 1] == ' ' || key[key.size() - 1] == '\t'))
+        {
+            setError(BAD_REQUEST);
+            return;
+        }
+
+        key   = toLower(trim(key));
+        value = trim(value);
+
         if (key.empty())
         {
             setError(BAD_REQUEST);
             return;
         }
 
-        if (m_version == "HTTP/1.1" && toLower(key) == "host")
+        if (m_version == "HTTP/1.1" && key == "host")
         {
             if (value.empty())
-            {
-                setError(BAD_REQUEST);
-                return;
-            }
-        }
-
-        key   = trim(key);
-        value = trim(value);
-        key   = toLower(key);
-
-        if (isDuplicateHeader(m_headers, key))
-        {
-            setError(BAD_REQUEST);
-            return;
-        }
-
-        if (key == "content-length")
-        {
-            if (isNumeric(value) == false)
             {
                 setError(BAD_REQUEST);
                 return;
@@ -404,7 +403,28 @@ void Request::parseHeaders(void)
             return;
         }
 
-        m_headers[key] = value;
+        if (m_headers.find(key) != m_headers.end())
+        {
+            if (key == "host" || key == "content-length")
+            {
+                setError(BAD_REQUEST);
+                return;
+            }
+            m_headers[key] += ", " + value;
+        }
+        else
+        {
+            m_headers[key] = value;
+        }
+
+        if (key == "content-length")
+        {
+            if (isNumeric(value) == false)
+            {
+                setError(BAD_REQUEST);
+                return;
+            }
+        }
     }
 
     m_state = BODY;

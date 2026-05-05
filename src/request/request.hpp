@@ -58,7 +58,9 @@ class Request
     std::string getHeader(const std::string &key) const;
     std::map<std::string, std::string> getHeaders(void) const;
     const std::vector<char> &getBody(void) const;
+
     void parseRequestLine(void);
+    void parseHeaders(void);
 
   private:
     ParserState m_state;
@@ -81,7 +83,6 @@ class Request
     size_t m_current_chunk_size;
     size_t m_chunk_bytes_read;
 
-    void parseHeaders(void);
     void parseBody(void);
     void parseChunkedBody(void);
 
