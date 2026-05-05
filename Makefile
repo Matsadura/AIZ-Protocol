@@ -1,25 +1,28 @@
-CPP=c++
-CPPFLAGS= -Wall -Wextra -Werror -std=c++98 -Wunused-variable
-NAME = webserv
-SRC= $(shell find . -name "*.cpp")
-OBJ= $(SRC:%.cpp=%.o)
-RM = rm -f
+# CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -Iincludes -g -g3 -ggdb3
+# Just tell me that I have warnings and SHUT UP AND LET ME COMPILE!
+CPPFLAGS = -Wall -Wextra -std=c++98 -g3 -ggdb3
+SRC      = $(shell find src/ -name '*.cpp')
+OBJDIR   = builds
+SRC_OBJ  = $(patsubst %.cpp,$(OBJDIR)/%.o, $(SRC))
+CXX      = g++ # g++ is better! update to c++ later
+NAME     = runme
 
-all : $(NAME)
+all: $(NAME)
 
-%.o : %.cpp
-	$(CPP) $(CPPFLAGS) -c $< -o $@
+$(NAME): $(SRC_OBJ)
+	$(CXX) $(SRC_OBJ) -o $(NAME)
 
+$(OBJDIR)/%.o: %.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CPPFLAGS) -c  $< -o $@
 
-$(NAME) : $(OBJ)
-	$(CPP) $(CPPFLAGS) $(OBJ) -o $@
+clean:
+	$(RM) $(SRC_OBJ)
 
-clean :
-	$(RM) $(OBJ)
-
-fclean : clean
+fclean: clean
 	$(RM) $(NAME)
 
-re : fclean all
+re: fclean all
 
 .PHONY: all clean fclean re
+.SECONDARY: $(SRC_OBJ)
