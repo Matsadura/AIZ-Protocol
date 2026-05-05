@@ -7,7 +7,7 @@
  */
 Parser::Parser(const std::vector<s_token> &tokens)
 {
-    if(tokens.empty())
+    if (tokens.empty())
         throw std::runtime_error("No tokens to parse");
     int index = 0;
     while (index < (int)tokens.size())

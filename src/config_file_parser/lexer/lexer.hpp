@@ -42,7 +42,7 @@ class lexer
     ~lexer();
     std::vector<s_token> tokens;
     std::vector<s_token> &tokenize();
-    
+
   private:
     // helpers
     int collect_digits(std::string &str);
