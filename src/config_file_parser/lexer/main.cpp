@@ -1,6 +1,9 @@
 #include "lexer.hpp"
+<<<<<<< HEAD
 #include "../parser/parser.hpp"
 #include <vector>
+=======
+>>>>>>> origin/main
 
 void print_tokens(const std::vector<s_token> &tokens)
 {

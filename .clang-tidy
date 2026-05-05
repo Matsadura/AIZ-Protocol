@@ -126,6 +126,6 @@ CheckOptions:
   modernize-deprecated-headers.CheckHeaderFile: true
   # Identifier Naming Configuration
   readability-identifier-naming.PrivateMemberPrefix: 'm_'
-  readability-identifier-naming.PrivateMemberCase: 'lower_case'
   readability-identifier-naming.ProtectedMemberPrefix: 'm_'
-  readability-identifier-naming.PublicMemberCase: 'lower_case'
+  # readability-identifier-naming.PrivateMemberCase: 'lower_case'
+  # readability-identifier-naming.PublicMemberCase: 'lower_case'
