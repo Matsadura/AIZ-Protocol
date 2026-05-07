@@ -299,5 +299,8 @@ void Request::parseHeaders(void)
 
     m_is_chunked = isBodyChunked();
 
-    m_state = BODY;
+    if (m_is_chunked || m_content_length > 0)
+        m_state = BODY;
+    else
+        m_state = COMPLETE;
 }

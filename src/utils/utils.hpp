@@ -11,7 +11,6 @@ std::vector<std::string> split(const std::string &str, char delimiter);
 bool isAllUpper(const std::string &str);
 int hexToInt(char c);
 std::string toLower(const std::string &str);
-bool isDuplicateHeader(const std::map<std::string, std::string> &headers, const std::string &key);
 bool isNumeric(const std::string &str);
 
 #endif /* UTILS_HPP */
