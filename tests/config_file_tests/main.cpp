@@ -1,6 +1,4 @@
-#include "../parser/parser.hpp"
-#include "lexer.hpp"
-#include <vector>
+#include "../../src/config_file_parser/parser/parser.hpp"
 
 int main(int argc, char **argv)
 {
