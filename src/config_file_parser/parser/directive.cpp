@@ -1,14 +1,14 @@
 #include "directive.hpp"
 
 /**
- * Default constructor for the parser class.
+ * Default constructor for the Directive class.
  */
 Directive::Directive()
 {
 }
 
 /**
- * Destructor for the parser class.
+ * Destructor for the Directive class.
  */
 Directive::~Directive()
 {
@@ -73,7 +73,9 @@ void Directive::parse_directive(const std::vector<s_token> &tokens, int &index)
         }
         else
         {
-            throw std::runtime_error("Unexpected token " + tokens[index].value);
+            if (index >= (int)tokens.size())
+                throw std::runtime_error("Unexpected EOF");
+            throw std::runtime_error("Unexpected token '" + tokens[index].value + "'");
         }
     }
     else
