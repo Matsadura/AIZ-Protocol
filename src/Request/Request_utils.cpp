@@ -147,6 +147,15 @@ bool Request::validateURI()
         setError(BAD_REQUEST);
         return false;
     }
+
+    for (size_t i = 0; i < decoded_uri.size(); ++i)
+    {
+        if (decoded_uri[i] <= 31 || decoded_uri[i] == 127)
+        {
+            setError(BAD_REQUEST);
+            return false;
+        }
+    }
     m_uri = decoded_uri;
     extractPathAndQuery();
     return true;
@@ -196,13 +205,46 @@ bool Request::validateHeaderKeyNotEmpty(const std::string &key)
     return true;
 }
 
+bool isTokenChar(char c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '!' || c == '#' ||
+           c == '$' || c == '%' || c == '&' || c == '\'' || c == '*' || c == '+' || c == '-' || c == '.' || c == '^' ||
+           c == '_' || c == '`' || c == '|' || c == '~';
+}
+
+/**
+ * Validate that the header key contains only valid characters (token characters as per RFC 7230).
+ * @key: The header key to validate.
+ * Return: True if the header key is valid, false if it contains invalid characters.
+ */
+bool Request::validateHeaderNameCharacters(const std::string &key)
+{
+    for (size_t i = 0; i < key.size(); ++i)
+    {
+        if (!isTokenChar(key[i]))
+        {
+            setError(BAD_REQUEST);
+            return false;
+        }
+    }
+    return true;
+}
+
 /**
  * Validate that the header value does not exceed a reasonable size limit (e.g., 8192 bytes).
  * @value: The header value to validate.
  * Return: True if the header value size is valid, false if it exceeds the limit.
  */
-bool Request::validateHeaderValueSize(const std::string &value)
+bool Request::validateHeaderValue(const std::string &value)
 {
+    for (size_t i = 0; i < value.size(); ++i)
+    {
+        if ((value[i] <= 31 && value[i] != '\t') || value[i] == 127)
+        {
+            setError(BAD_REQUEST);
+            return false;
+        }
+    }
     if (value.size() > 8192)
     {
         setError(BAD_REQUEST);
@@ -231,23 +273,59 @@ bool Request::validateHeaderHost(const std::string &key, const std::string &valu
  * Validate that certain headers (like Host and Content-Length) are not duplicated, and merge others if they are.
  * @key: The header key being validated.
  * @value: The header value being validated.
- * Return: True if the header is valid and processed successfully, false if there was an error (e.g., duplicate Host).
+ * Return: True if the header is valid and processed successfully, false if there was an error (e.g., duplicate
+ * Host).
  */
 bool Request::validateHeaderDuplicates(const std::string &key, std::string &value)
 {
     if (m_headers.find(key) != m_headers.end())
     {
-        if (key == "host" || key == "content-length")
+        if (key == "host")
         {
             setError(BAD_REQUEST);
             return false;
         }
-        m_headers[key] += ", " + value;
+        if (key == "content-length" && value != m_headers[key])
+        {
+            setError(BAD_REQUEST);
+            return false;
+        }
+        else
+            m_headers[key] += ", " + value;
     }
     else
     {
         m_headers[key] = value;
     }
+    return true;
+}
+
+/**
+ * Validate that the Content-Length header value is numeric and does not exceed the maximum body size.
+ * @key: The header key being validated.
+ * @value: The header value being validated.
+ * Return: True if the Content-Length value is valid, false if it is invalid (e.g., non-numeric or too large).
+ */
+bool Request::validateContentLengthOverflow(const std::string &value, size_t &result)
+{
+    if (value.empty())
+        return false;
+
+    result = 0;
+
+    for (size_t i = 0; i < value.size(); ++i)
+    {
+        if (!std::isdigit(value[i]))
+            return false;
+
+        size_t digit = value[i] - '0';
+
+        if (result > (std::numeric_limits<size_t>::max() - digit) / 10)
+            return false;
+
+        result = result * 10 + digit;
+    }
+
     return true;
 }
 
@@ -259,11 +337,25 @@ bool Request::validateHeaderDuplicates(const std::string &key, std::string &valu
  */
 bool Request::validateHeaderContentLength(const std::string &key, const std::string &value)
 {
-    if (key == "content-length" && !isNumeric(value))
+    if (key == "content-length" && (!isNumeric(value) || value.empty()))
     {
         setError(BAD_REQUEST);
         return false;
     }
+
+    size_t content_length = 0;
+    if (!validateContentLengthOverflow(value, content_length))
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+
+    if (content_length > m_max_body_size)
+    {
+        setError(PAYLOAD_TOO_LARGE);
+        return false;
+    }
+
     return true;
 }
 
@@ -279,4 +371,25 @@ bool Request::validateHTTP11Host(void)
         return false;
     }
     return true;
+}
+
+/**
+ * Check if the request body is chunked based on the Transfer-Encoding header.
+ * Return: True if the body is chunked, false otherwise.
+ */
+bool Request::isBodyChunked(void) const
+{
+    std::map<std::string, std::string>::const_iterator it = m_headers.find("transfer-encoding");
+    if (it != m_headers.end())
+    {
+        std::string value                  = toLower(it->second);
+        std::vector<std::string> encodings = split(value, ',');
+        for (size_t i = 0; i < encodings.size(); ++i)
+        {
+            std::string encoding = trim(encodings[i]);
+            if (encoding == "chunked")
+                return true;
+        }
+    }
+    return false;
 }

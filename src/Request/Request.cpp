@@ -207,10 +207,11 @@ void Request::parseRequestLine()
         return;
 
     std::string request_line = m_raw_buffer.substr(0, pos);
-    m_raw_buffer.erase(0, pos + 2);
 
     if (!validateRequestLineFormat(request_line))
         return;
+
+    m_raw_buffer.erase(0, pos + 2);
 
     std::vector<std::string> tokens = split(request_line, ' ');
     if (!validateRequestLinePartsCount(tokens))
@@ -247,10 +248,7 @@ void Request::parseHeaders(void)
         size_t pos = m_raw_buffer.find(CRLF, start_pos);
 
         if (pos == std::string::npos)
-        {
-            m_raw_buffer.erase(0, start_pos);
             return;
-        }
 
         std::string line = m_raw_buffer.substr(start_pos, pos - start_pos);
         start_pos        = pos + 2;
@@ -274,13 +272,16 @@ void Request::parseHeaders(void)
         if (!validateHeaderKeyFormat(key))
             return;
 
-        key   = toLower(trim(key));
+        key   = toLower(key);
         value = trim(value);
 
         if (!validateHeaderKeyNotEmpty(key))
             return;
 
-        if (!validateHeaderValueSize(value))
+        if (!validateHeaderNameCharacters(key))
+            return;
+
+        if (!validateHeaderValue(value))
             return;
 
         if (!validateHeaderHost(key, value))
@@ -293,8 +294,10 @@ void Request::parseHeaders(void)
             return;
     }
 
-    m_state = BODY;
-
     if (!validateHTTP11Host())
         return;
+
+    m_is_chunked = isBodyChunked();
+
+    m_state = BODY;
 }

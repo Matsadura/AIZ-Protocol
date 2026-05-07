@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <sstream>
 #include <stdexcept>
@@ -101,11 +102,14 @@ class Request
 
     bool validateHeaderKeyFormat(const std::string &key);
     bool validateHeaderKeyNotEmpty(const std::string &key);
-    bool validateHeaderValueSize(const std::string &value);
+    bool validateHeaderNameCharacters(const std::string &key);
+    bool validateHeaderValue(const std::string &value);
     bool validateHeaderHost(const std::string &key, const std::string &value);
     bool validateHeaderDuplicates(const std::string &key, std::string &value);
+    bool validateContentLengthOverflow(const std::string &value, size_t &result);
     bool validateHeaderContentLength(const std::string &key, const std::string &value);
     bool validateHTTP11Host(void);
+    bool isBodyChunked(void) const;
 };
 
 #endif /* REQUEST_HPP */
