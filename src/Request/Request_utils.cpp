@@ -285,18 +285,25 @@ bool Request::validateHeaderDuplicates(const std::string &key, std::string &valu
             setError(BAD_REQUEST);
             return false;
         }
-        if (key == "content-length" && value != m_headers[key])
+
+        if (key == "content-length")
         {
-            setError(BAD_REQUEST);
-            return false;
+            if (value != m_headers[key])
+            {
+                setError(BAD_REQUEST);
+                return false;
+            }
+
+            return true;
         }
-        else
-            m_headers[key] += ", " + value;
+
+        m_headers[key] += ", " + value;
     }
     else
     {
         m_headers[key] = value;
     }
+
     return true;
 }
 
@@ -337,7 +344,10 @@ bool Request::validateContentLengthOverflow(const std::string &value, size_t &re
  */
 bool Request::validateHeaderContentLength(const std::string &key, const std::string &value)
 {
-    if (key == "content-length" && (!isNumeric(value) || value.empty()))
+    if (key != "content-length")
+        return true;
+
+    if (!isNumeric(value) || value.empty())
     {
         setError(BAD_REQUEST);
         return false;
