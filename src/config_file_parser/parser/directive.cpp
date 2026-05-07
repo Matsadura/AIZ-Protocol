@@ -3,7 +3,16 @@
 /**
  * Default constructor for the Directive class.
  */
-Directive::Directive()
+Directive::Directive() : m_index(0)
+{
+}
+
+/**
+ * Constructor for the Directive class with a specified index.
+ *
+ * @param index The initial index for parsing tokens.
+ */
+Directive::Directive(int index) : m_index(index)
 {
 }
 
@@ -27,61 +36,79 @@ bool Directive::expect(t_type type, const s_token &token)
 }
 
 /**
+ * Increments the index for parsing tokens.
+ */
+void Directive::increment_index()
+{
+    m_index += 1;
+}
+
+/**
+ * Gets the current index for parsing tokens.
+ *
+ * @return The current index.
+ */
+int Directive::get_index() const
+{
+    return m_index;
+}
+
+/**
  * Parses a directive from the given tokens starting at the specified index.
  *
  * @param tokens The vector of tokens to parse.
  * @param index The current index in the tokens vector (passed by reference).
  * @throws std::runtime_error If an unexpected token is encountered or if EOF is reached unexpectedly.
  */
-void Directive::parse_directive(const std::vector<s_token> &tokens, int &index)
+void Directive::parse_directive(const std::vector<s_token> &tokens)
 {
-    if (index >= (int)tokens.size())
+    if (m_index >= (int)tokens.size())
         throw std::runtime_error("Unexpected EOF");
-    if (tokens[index].type == WORD)
+    if (tokens[m_index].type == WORD)
     {
-        m_key = tokens[index].value;
-        index++;
-        while (index < (int)tokens.size() && (expect(WORD, tokens[index]) || expect(NUMBER, tokens[index])))
+        m_key = tokens[m_index].value;
+        increment_index();
+        while (m_index < (int)tokens.size() && (expect(WORD, tokens[m_index]) || expect(NUMBER, tokens[m_index])))
         {
-            m_values.push_back(tokens[index].value);
-            index++;
+            m_values.push_back(tokens[m_index].value);
+            increment_index();
         }
-        if (index < (int)tokens.size() && expect(SEMICOLON, tokens[index]))
+        if (m_index < (int)tokens.size() && expect(SEMICOLON, tokens[m_index]))
         {
-            index++;
+            increment_index();
             return;
         }
-        else if (index < (int)tokens.size() && expect(LBRACE, tokens[index]))
+        else if (m_index < (int)tokens.size() && expect(LBRACE, tokens[m_index]))
         {
-            index++;
+            increment_index();
             while (true)
             {
-                if (index >= (int)tokens.size())
+                if (m_index >= (int)tokens.size())
                     throw std::runtime_error("Unexpected EOF (missing '}')");
 
-                if (tokens[index].type == RBRACE)
+                if (tokens[m_index].type == RBRACE)
                     break;
-                int old_index = index;
-                Directive node;
-                node.parse_directive(tokens, index);
+                Directive node(m_index);
+                node.parse_directive(tokens);
                 m_children.push_back(node);
-                if (index == old_index)
+                if (node.get_index() == this->m_index)
                     throw std::runtime_error("Parser stuck");
+                m_index = node.get_index();
             }
-            index++;
+            increment_index();
             return;
         }
         else
         {
-            if (index >= (int)tokens.size())
+            if (m_index >= (int)tokens.size())
                 throw std::runtime_error("Unexpected EOF");
-            throw std::runtime_error("Unexpected token '" + tokens[index].value + "'");
+            throw std::runtime_error("Unexpected token '" + tokens[m_index].value + "'");
         }
     }
     else
     {
         std::stringstream ss;
-        ss << "Expected directive at line " << tokens[index].line;
+        ss << "Expected directive at line " << tokens[m_index].line;
         throw std::runtime_error(ss.str());
     }
 }

@@ -12,9 +12,10 @@ Parser::Parser(const std::vector<s_token> &tokens)
     int index = 0;
     while (index < (int)tokens.size())
     {
-        Directive obj;
-        obj.parse_directive(tokens, index);
+        Directive obj(index);
+        obj.parse_directive(tokens);
         m_directives.push_back(obj);
+        index = obj.get_index();
     }
 }
 
