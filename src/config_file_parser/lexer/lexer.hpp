@@ -49,4 +49,5 @@ class lexer
     void collect_words_and_numbers();
     bool isWordChar(char c);
     s_token createToken(const std::string &value, t_type type) const;
+    void print_tokens(const std::vector<s_token> &tokens);
 };

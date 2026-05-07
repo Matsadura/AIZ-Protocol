@@ -43,3 +43,5 @@
 # Directory contains only object files
 builds
 runme
+
+.vscode
