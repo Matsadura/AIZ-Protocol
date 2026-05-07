@@ -16,7 +16,7 @@ class Directive
     Directive(int index);
     ~Directive();
     void parse_directive(const std::vector<s_token> &tokens);
-    bool expect(t_type type, const s_token &token);
+    bool expect(t_type type, const s_token &token) const;
     void printDirective(int indent = 0) const;
     void increment_index();
     int get_index() const;

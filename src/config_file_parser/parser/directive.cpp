@@ -30,7 +30,7 @@ Directive::~Directive()
  * @param token The token to check.
  * @return True if the token type matches the expected type, false otherwise.
  */
-bool Directive::expect(t_type type, const s_token &token)
+bool Directive::expect(t_type type, const s_token &token) const
 {
     return (type == token.type);
 }
@@ -45,7 +45,6 @@ void Directive::increment_index()
 
 /**
  * Gets the current index for parsing tokens.
- *
  * @return The current index.
  */
 int Directive::get_index() const
@@ -55,10 +54,7 @@ int Directive::get_index() const
 
 /**
  * Parses a directive from the given tokens starting at the specified index.
- *
  * @param tokens The vector of tokens to parse.
- * @param index The current index in the tokens vector (passed by reference).
- * @throws std::runtime_error If an unexpected token is encountered or if EOF is reached unexpectedly.
  */
 void Directive::parse_directive(const std::vector<s_token> &tokens)
 {
