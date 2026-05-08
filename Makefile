@@ -5,7 +5,7 @@ SRC_OBJ   = $(patsubst %.cpp,$(OBJDIR)/%.o, $(SRC))
 CXX       = g++
 NAME      = runme
 
-MAIN_PATH ?= ./tests/config_file_tests/main.cpp
+MAIN_PATH ?= tests/main.cpp
 
 all: $(NAME)
 
