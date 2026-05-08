@@ -1,5 +1,8 @@
 #include "Common.h"
 
+/**
+ * Convert a sockaddr_in structure to string representation
+ */
 std::string addr_to_string(struct sockaddr_in *addr)
 {
     std::stringstream ss;

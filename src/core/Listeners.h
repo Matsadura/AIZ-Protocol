@@ -4,6 +4,9 @@
 #include "Common.h"
 #include "ListenerAddrInfo.h"
 
+/**
+ * Manage multiple listener sockets and their file descriptors
+ */
 class Listeners
 {
   private:

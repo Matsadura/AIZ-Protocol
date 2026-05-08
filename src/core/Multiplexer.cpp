@@ -2,7 +2,7 @@
 
 Multiplexer::Multiplexer(void) : m_epfd(), m_evlist()
 {
-    m_accepter.create_new(NULL, "8080"); //@hardcode: this suppose to loop through the config
+    m_accepter.create_new(NULL, "8080"); //@hardcode: this suppose to be read from config file
 
     struct epoll_event ev = {};
     m_epfd                = epoll_create(20);
@@ -30,6 +30,9 @@ Multiplexer::~Multiplexer()
 {
 }
 
+/**
+ * Run the event loop to monitor and handle events on the listener sockets and active connections
+ */
 void Multiplexer::run()
 { // NOLINT
     int ready;
@@ -53,6 +56,9 @@ void Multiplexer::run()
     }
 }
 
+/**
+ * Start monitoring the specified file descriptor for events
+ */
 void Multiplexer::start_monitoring(int sockfd)
 {
     struct epoll_event ev = {};
@@ -61,6 +67,9 @@ void Multiplexer::start_monitoring(int sockfd)
     epoll_ctl(m_epfd, EPOLL_CTL_ADD, sockfd, &ev);
 }
 
+/**
+ * Stop monitoring the specified file descriptor for events
+ */
 void Multiplexer::stop_monitoring(int sockfd)
 {
     if (epoll_ctl(m_epfd, EPOLL_CTL_DEL, sockfd, NULL) == 0)
@@ -69,6 +78,9 @@ void Multiplexer::stop_monitoring(int sockfd)
         abort("epoll_ctl");
 }
 
+/**
+ * Log the details of the specified event for debugging and monitoring purposes
+ */
 void Multiplexer::log_event(struct epoll_event ev)
 {
     std::cout << "INFO: " << "[EVENT] (fd=" << ev.data.fd << ") " << "TYPE: ";
