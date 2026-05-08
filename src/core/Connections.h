@@ -6,7 +6,7 @@ class ListenerSocket;
 
 class Multiplexer;
 
-class Connections : public Uncopyable
+class Connections
 {
     typedef struct
     {
@@ -18,10 +18,14 @@ class Connections : public Uncopyable
   private:
     std::vector<connection_t> m_list;
 
-  public:
-    Connections();
+    /**
+     * @note: this class is uncopyable
+     */
     Connections(const Connections &other);
     Connections &operator=(const Connections &other);
+
+  public:
+    Connections();
     ~Connections();
 
     int accept_new(int fd, Multiplexer &server);

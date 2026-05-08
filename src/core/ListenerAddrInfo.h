@@ -3,17 +3,22 @@
 
 #include "Common.h"
 
-class ListenerAddrInfo : public Uncopyable
+class ListenerAddrInfo
 {
   private:
     struct addrinfo m_hints;
     struct addrinfo *m_result;
 
-  public:
-    ListenerAddrInfo(const char *nodeName, const char *port);
+    /**
+     * @note: this class is uncopyable
+     */
     ListenerAddrInfo(const ListenerAddrInfo &other);
     ListenerAddrInfo &operator=(const ListenerAddrInfo &other);
+
+  public:
+    ListenerAddrInfo(const char *nodeName, const char *port);
     ~ListenerAddrInfo();
+
     std::string toString();
     int family();
     int sockType();

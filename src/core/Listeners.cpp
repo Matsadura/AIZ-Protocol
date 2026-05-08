@@ -8,10 +8,12 @@ Listeners::Listeners()
 
 Listeners::Listeners(const Listeners &other) // NOLINT
 {
+    (void)other;
 }
 
 Listeners &Listeners::operator=(const Listeners &other) // NOLINT
 {
+    (void)other;
     return *this;
 }
 

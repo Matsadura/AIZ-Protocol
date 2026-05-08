@@ -7,10 +7,12 @@ Connections::Connections()
 
 Connections::Connections(const Connections &other) // NOLINT
 {
+    (void)other;
 }
 
 Connections &Connections::operator=(const Connections &other) // NOLINT
 {
+    (void)other;
     return (*this);
 }
 

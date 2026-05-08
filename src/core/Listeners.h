@@ -4,7 +4,7 @@
 #include "Common.h"
 #include "ListenerAddrInfo.h"
 
-class Listeners : public Uncopyable
+class Listeners
 {
   private:
     /**
@@ -17,10 +17,14 @@ class Listeners : public Uncopyable
     static int PandingLimit;
     std::vector<int> m_sockFds;
 
-  public:
-    Listeners();
+    /**
+     * @note: this class is uncopyable
+     */
     Listeners(const Listeners &other);
     Listeners &operator=(const Listeners &other);
+
+  public:
+    Listeners();
     ~Listeners();
 
     void create_new(const char *nodeName, const char *port);

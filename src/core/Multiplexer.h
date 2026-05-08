@@ -7,7 +7,7 @@
 
 #define MAX_EVENTS 1024
 
-class Multiplexer : public Uncopyable
+class Multiplexer
 {
   private:
     int m_epfd;
@@ -15,10 +15,14 @@ class Multiplexer : public Uncopyable
     Connections m_conns;
     Listeners m_accepter;
 
-  public:
-    Multiplexer(void);
+    /**
+     * @note: this class is uncopyable
+     */
     Multiplexer(const Multiplexer &other);
     Multiplexer &operator=(const Multiplexer &other);
+
+  public:
+    Multiplexer(void);
     ~Multiplexer();
 
     void run();

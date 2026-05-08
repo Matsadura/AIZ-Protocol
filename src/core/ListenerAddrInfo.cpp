@@ -11,10 +11,12 @@ ListenerAddrInfo::ListenerAddrInfo(const char *nodeName, const char *port) : m_h
 
 ListenerAddrInfo::ListenerAddrInfo(const ListenerAddrInfo &other) // NOLINT
 {
+    (void)other;
 }
 
 ListenerAddrInfo &ListenerAddrInfo::operator=(const ListenerAddrInfo &other) // NOLINT
 {
+    (void)other;
     return *this;
 }
 

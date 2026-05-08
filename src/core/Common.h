@@ -24,23 +24,4 @@
         exit(1);                                                                                                       \
     } while (0)
 
-/**
- * Base class designed to prevent copying
- **/
-class Uncopyable
-{
-  protected:
-    Uncopyable()
-    {
-    }
-
-    ~Uncopyable()
-    {
-    }
-
-  private:
-    Uncopyable(const Uncopyable &);
-    Uncopyable &operator=(const Uncopyable &);
-};
-
 std::string addr_to_string(struct sockaddr_in *addr);

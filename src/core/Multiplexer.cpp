@@ -17,10 +17,12 @@ Multiplexer::Multiplexer(void) : m_epfd(), m_evlist()
 
 Multiplexer::Multiplexer(const Multiplexer &other) // NOLINT
 {
+    (void)other;
 }
 
 Multiplexer &Multiplexer::operator=(const Multiplexer &other) // NOLINT
 {
+    (void)other;
     return (*this);
 }
 
