@@ -1,11 +1,11 @@
-# CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -Iincludes -g -g3 -ggdb3
-# Just tell me that I have warnings and SHUT UP AND LET ME COMPILE!
-CPPFLAGS = -Wall -Wextra -std=c++98 -g3 -ggdb3
-SRC      = $(shell find src/ -name '*.cpp')
-OBJDIR   = builds
-SRC_OBJ  = $(patsubst %.cpp,$(OBJDIR)/%.o, $(SRC))
-CXX      = g++ # g++ is better! update to c++ later
-NAME     = runme
+CPPFLAGS  = -Wall -Wextra -std=c++98 -g3 -ggdb3
+SRC       = $(shell find src/ -name '*.cpp') $(MAIN_PATH)
+OBJDIR    = builds
+SRC_OBJ   = $(patsubst %.cpp,$(OBJDIR)/%.o, $(SRC))
+CXX       = g++
+NAME      = runme
+
+MAIN_PATH ?= tests/main.cpp
 
 all: $(NAME)
 
