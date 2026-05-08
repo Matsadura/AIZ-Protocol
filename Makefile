@@ -1,11 +1,11 @@
 CPPFLAGS  = -Wall -Wextra -std=c++98 -g3 -ggdb3
-MAIN_PATH = ./tests/config_file_tests/main.cpp
 SRC       = $(shell find src/ -name '*.cpp') $(MAIN_PATH)
 OBJDIR    = builds
 SRC_OBJ   = $(patsubst %.cpp,$(OBJDIR)/%.o, $(SRC))
 CXX       = g++
 NAME      = runme
 
+MAIN_PATH ?= ./tests/config_file_tests/main.cpp
 
 all: $(NAME)
 
