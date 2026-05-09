@@ -57,27 +57,27 @@ int Directive::get_index() const
  * Gets the key of the directive.
  * @return The key of the directive.
  */
-std::string &Directive::get_key()
+const std::string &Directive::get_key() const
 {
-    return m_key;
+    return (m_key);
 }
 
 /**
  * Gets the values associated with the directive.
  * @return A reference to the vector of values.
  */
-std::vector<std::string> &Directive::get_value()
+const std::vector<std::string> &Directive::get_values() const
 {
-    return m_values;
+    return (m_values);
 }
 
 /**
  * Gets the children of the directive.
  * @return A reference to the vector of child directives.
  */
-std::vector<Directive> &Directive::get_children()
+const std::vector<Directive> &Directive::get_children() const
 {
-    return m_children;
+    return (m_children);
 }
 
 /**

@@ -19,9 +19,10 @@ class Directive
     bool expect(t_type type, const s_token &token) const;
     void printDirective(int indent = 0) const;
     void increment_index();
+    // getters
     int get_index() const;
-    std::string &get_key();
-    std::vector<std::string> &get_value();
-    std::vector<Directive> &get_children();
+    const std::string &get_key() const;
+    const std::vector<std::string> &get_values() const;
+    const std::vector<Directive> &get_children() const;
     
 };

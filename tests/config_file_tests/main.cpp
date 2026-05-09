@@ -1,4 +1,4 @@
-#include "../../src/config_file_parser/parser/parser.hpp"
+#include "../parser/parser.hpp"
 
 int main(int argc, char **argv)
 {
