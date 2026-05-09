@@ -20,4 +20,8 @@ class Directive
     void printDirective(int indent = 0) const;
     void increment_index();
     int get_index() const;
+    std::string &get_key();
+    std::vector<std::string> &get_value();
+    std::vector<Directive> &get_children();
+    
 };

@@ -43,6 +43,7 @@ void Directive::increment_index()
     m_index += 1;
 }
 
+//================ getters ================ //
 /**
  * Gets the current index for parsing tokens.
  * @return The current index.
@@ -50,6 +51,33 @@ void Directive::increment_index()
 int Directive::get_index() const
 {
     return m_index;
+}
+
+/**
+ * Gets the key of the directive.
+ * @return The key of the directive.
+ */
+std::string &Directive::get_key()
+{
+    return m_key;
+}
+
+/**
+ * Gets the values associated with the directive.
+ * @return A reference to the vector of values.
+ */
+std::vector<std::string> &Directive::get_value()
+{
+    return m_values;
+}
+
+/**
+ * Gets the children of the directive.
+ * @return A reference to the vector of child directives.
+ */
+std::vector<Directive> &Directive::get_children()
+{
+    return m_children;
 }
 
 /**
