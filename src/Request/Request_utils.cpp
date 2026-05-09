@@ -403,3 +403,24 @@ bool Request::isBodyChunked(void) const
     }
     return false;
 }
+
+/**
+ * Validate that the body size does not exceed the Content-Length or the maximum body size limits.
+ * @new_data_size: The size of the new data being added to the body.
+ * Return: True if the body size is valid, false if it exceeds limits.
+ */
+bool Request::validateBodySize(size_t new_data_size)
+{
+    if (m_body.size() > m_content_length)
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+
+    if (m_body.size() + new_data_size > m_max_body_size)
+    {
+        setError(PAYLOAD_TOO_LARGE);
+        return false;
+    }
+    return true;
+}

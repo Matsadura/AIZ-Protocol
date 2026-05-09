@@ -110,6 +110,9 @@ class Request
     bool validateHeaderContentLength(const std::string &key, const std::string &value);
     bool validateHTTP11Host(void);
     bool isBodyChunked(void) const;
+
+    /* Helper functions for body parsing */
+    bool validateBodySize(size_t new_data_size);
 };
 
 #endif /* REQUEST_HPP */

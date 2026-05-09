@@ -1,5 +1,6 @@
 #include "Request.hpp"
 #include <cstddef>
+#include <cstdlib>
 #include <vector>
 
 /**
@@ -297,10 +298,49 @@ void Request::parseHeaders(void)
     if (!validateHTTP11Host())
         return;
 
+    if (m_headers.find("content-length") != m_headers.end())
+    {
+        if (!m_headers["content-length"].empty())
+        {
+            m_content_length = std::strtoul(m_headers["content-length"].c_str(), NULL, 10);
+        }
+    }
+
     m_is_chunked = isBodyChunked();
 
     if (m_is_chunked || m_content_length > 0)
         m_state = BODY;
     else
         m_state = COMPLETE;
+}
+
+/**
+ * Parse the body of the HTTP request, handling both chunked and non-chunked bodies.
+ */
+void Request::parseBody(void)
+{
+    if (m_state != BODY)
+        return;
+
+    if (m_is_chunked)
+    {
+        // parseChunkedBody();
+        return;
+    }
+
+    if (!validateBodySize(m_raw_buffer.size()))
+        return;
+
+    size_t bytes_needed = m_content_length - m_body.size();
+    if (m_raw_buffer.size() < bytes_needed)
+    {
+        m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.end());
+        m_raw_buffer.clear();
+        return;
+    }
+
+    m_body.insert(m_body.end(), m_raw_buffer.begin(),
+                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_needed));
+    m_raw_buffer.erase(0, bytes_needed);
+    m_state = COMPLETE;
 }
