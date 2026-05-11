@@ -1,6 +1,6 @@
 #include "Multiplexer.h"
 
-Multiplexer::Multiplexer(void) : m_epfd(), m_evlist()
+Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist()
 {
     m_accepter.create_new(NULL, "8080"); //@hardcode: this suppose to be read from config file
 
@@ -17,17 +17,19 @@ Multiplexer::Multiplexer(void) : m_epfd(), m_evlist()
 
 Multiplexer::Multiplexer(const Multiplexer &other) // NOLINT
 {
-    (void)other;
+    UNUSED(other);
 }
 
 Multiplexer &Multiplexer::operator=(const Multiplexer &other) // NOLINT
 {
-    (void)other;
+    UNUSED(other);
     return (*this);
 }
 
 Multiplexer::~Multiplexer()
 {
+    if (m_epfd != -1)
+        close(m_epfd);
 }
 
 /**
@@ -64,6 +66,7 @@ void Multiplexer::start_monitoring(int sockfd)
     struct epoll_event ev = {};
     ev.events             = EPOLLIN | EPOLLRDHUP;
     ev.data.fd            = sockfd;
+    // @bug: check for errors!
     epoll_ctl(m_epfd, EPOLL_CTL_ADD, sockfd, &ev);
 }
 
@@ -73,7 +76,7 @@ void Multiplexer::start_monitoring(int sockfd)
 void Multiplexer::stop_monitoring(int sockfd)
 {
     if (epoll_ctl(m_epfd, EPOLL_CTL_DEL, sockfd, NULL) == 0)
-        std::cout << "INFO: [DISCONNECT] " << sockfd << " ignored by the poll\n";
+        std::cout << "INFO: [DISCONNECT] " << sockfd << " removed by the poll\n";
     else
         abort("epoll_ctl");
 }

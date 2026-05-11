@@ -26,6 +26,7 @@ int Connections::accept_new(int fd, Multiplexer &server)
     std::cout << "INFO: [NEW_CONNECTION] (fd=" << conn.sockfd << ") "
               << addr_to_string(reinterpret_cast<struct sockaddr_in *>(&conn.addr)) << "\n";
     server.start_monitoring(conn.sockfd);
+    m_list.push_back(conn);
     return conn.sockfd;
 }
 
@@ -36,9 +37,9 @@ void Connections::close_connection(int sockfd, Multiplexer &server)
     {
         if ((*it).sockfd == sockfd)
         {
-            m_list.erase(it);
             server.stop_monitoring(sockfd);
-            close((*it).sockfd);
+            m_list.erase(it);
+            close(sockfd);
             break;
         }
         it++;

@@ -13,7 +13,8 @@ std::string addr_to_string(struct sockaddr_in *addr)
     ss << static_cast<unsigned int>(octets[2]) << ".";
     ss << static_cast<unsigned int>(octets[3]) << ":";
 
-    ss << htons(addr->sin_port);
+    // @bug: I'm not sure which one!
+    ss << ntohs(addr->sin_port);
 
     return ss.str();
 }
