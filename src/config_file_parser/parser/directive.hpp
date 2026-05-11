@@ -24,5 +24,4 @@ class Directive
     const std::string &get_key() const;
     const std::vector<std::string> &get_values() const;
     const std::vector<Directive> &get_children() const;
-    
 };

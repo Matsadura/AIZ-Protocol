@@ -2,7 +2,7 @@
 
 #include "location.hpp"
 
-class Server
+class s_Server
 {
     private:
 

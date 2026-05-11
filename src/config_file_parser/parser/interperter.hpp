@@ -2,10 +2,12 @@
 
 #include "directive.hpp"
 #include "parser.hpp"
+#include <cstddef>
 #include <map>
 #include <vector>
+#include <cstdlib>
 
-struct Location
+struct s_Location
 {
     std::string path;
     std::string root;
@@ -21,28 +23,45 @@ struct Location
     std::map<std::string, std::string> CGIhandlers;
 
     // redirect
-    std::string redirect_code;
+    int redirect_code;
     std::string redirect_path;
+
+    bool autoindex;
 };
 
-struct Server
+struct s_Server
 {
-    std::vector<std::pair<std::string, int> > ports;
-    std::string max_body_size;
-    
+    std::map<std::string, int> ports;
+    size_t max_body_size;
+
     std::string global_root;
     std::string global_index;
     // Locations
-    std::vector<Location> locations;
+    std::vector<s_Location> locations;
+    std::map<int, std::string> error_page;
 };
 
 class Interperter
 {
-    private:
-        std::vector<Server> m_servers;
-    public:
-        Interperter(const std::vector<Directive> &directives);
-        ~Interperter();
-    private:
-        Server parseServer(const Directive &directive);
+  private:
+    std::vector<s_Server> m_servers;
+
+  public:
+    Interperter(const std::vector<Directive> &directives);
+    ~Interperter();
+
+  private:
+    s_Server parseServer(const Directive &directive);
+    s_Location &handleLocation(const std::vector<Directive> &DirectiveChildren, size_t &i,
+                                        s_Server &server);
+    void handleport(const std::string &value, std::map<std::string, int> &ports);
+    std::vector<std::string>    handleMethods(const std::vector<std::string> &Methods);
+    bool handleAutoindex(const std::string &value);
+    int handleRedirectCode(const std::string &code);
+    std::map<std::string, std::string> handleCGI(const std::vector<std::string> &cgi_values);
+    size_t handlemaxbodysize(const std::vector<std::string> &values);
+    void handleErrorPage(const std::vector<std::string> &values,
+                                  std::map<int, std::string> &error_page);
+
+
 };
