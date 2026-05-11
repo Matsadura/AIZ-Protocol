@@ -79,11 +79,17 @@ void Multiplexer::start_monitoring(int sockfd)
     ev.events             = EPOLLIN | EPOLLRDHUP;
     ev.data.fd            = sockfd;
 
-    std::cout << "INFO: [NEW_CONNECTION] (fd=" << sockfd << ") registerd in interest list\n";
+    LOG_INFO("EPOLL") << "Registerd (fd=" << sockfd << ")\n";
     if (epoll_ctl(m_epfd, EPOLL_CTL_ADD, sockfd, &ev) == -1)
         abort("epoll_ctl ADD");
 }
 
+/**
+ * Change the settings associated with sockfd in the interest list to the new settings specified in events
+ *
+ * @sockfd: socket file descriptor
+ * @evnts: which events to listen for EPOLLOUT | EPOLLIN
+ */
 void Multiplexer::switch_interest(int sockfd, uint32_t events)
 {
     struct epoll_event ev = {};
@@ -91,9 +97,9 @@ void Multiplexer::switch_interest(int sockfd, uint32_t events)
     ev.data.fd            = sockfd;
 
     if (events == EPOLLIN)
-        std::cout << "INFO: [SWITCH_INTEREST] (fd=" << sockfd << ") wants to read\n";
+        LOG_INFO("EPOLL") << "Mod->read (fd=" << sockfd << ")\n";
     else if (events == EPOLLOUT)
-        std::cout << "INFO: [SWITCH_INTEREST] (fd=" << sockfd << ") wants to respond\n";
+        LOG_INFO("EPOLL") << "Mod->write (fd=" << sockfd << ")\n";
     else
         UNREACHABLE("switch_interest got unxpected event");
 
@@ -108,7 +114,7 @@ void Multiplexer::switch_interest(int sockfd, uint32_t events)
 void Multiplexer::stop_monitoring(int sockfd)
 {
     if (epoll_ctl(m_epfd, EPOLL_CTL_DEL, sockfd, NULL) == 0)
-        std::cout << "INFO: [DISCONNECT] " << sockfd << " deregisterd from interest list\n";
+        LOG_INFO("EPOLL") << "Remove (fd=" << sockfd << ")\n";
     else
         abort("epoll_ctl");
 }
@@ -118,11 +124,8 @@ void Multiplexer::stop_monitoring(int sockfd)
  */
 void Multiplexer::log_event(struct epoll_event ev)
 {
-    std::cout << "INFO: " << "[EVENT] (fd=" << ev.data.fd << ") " << "TYPE: ";
-    std::cout << ((ev.events & EPOLLIN) ? "EPOLLIN " : "");
-    std::cout << ((ev.events & EPOLLOUT) ? "EPOLLOUT " : "");
-    std::cout << ((ev.events & EPOLLHUP) ? "EPOLLHUP " : "");
-    std::cout << ((ev.events & EPOLLRDHUP) ? "EPOLLRDHUP " : "");
-    std::cout << ((ev.events & EPOLLERR) ? "EPOLLERR " : "");
-    std::cout << "\n";
+    LOG_INFO("EPOLL") << "New event: " << ((ev.events & EPOLLIN) ? "EPOLLIN " : "")
+                      << ((ev.events & EPOLLOUT) ? "EPOLLOUT " : "") << ((ev.events & EPOLLHUP) ? "EPOLLHUP " : "")
+                      << ((ev.events & EPOLLRDHUP) ? "EPOLLRDHUP " : "") << ((ev.events & EPOLLERR) ? "EPOLLERR " : "")
+                      << "(fd=" << ev.data.fd << ")\n";
 }

@@ -48,4 +48,10 @@
         exit(1);                                                                                                       \
     } while (0)
 
+// Simple logger
+// Usage: LOG_INFO("CONNECTION") << "new connection arrived"
+#define LOG_INFO(module) (std::cout << "INFO: [" << (module) << "] > ")
+#define LOG_DEBUG(module) (std::cout << "DEBUG: [" << (module) << "] > ")
+#define LOG_ERROR(module) (std::cerr << "ERROR: [" << (module) << "] > ")
+
 std::string addr_to_string(struct sockaddr_in *addr);
