@@ -22,6 +22,7 @@ Listeners::~Listeners()
     std::for_each(m_sockFds.begin(), m_sockFds.end(), close);
     m_sockFds.clear();
 }
+
 /**
  * Create a new listener socket, bind it to the specified address and port, and start listening for incoming connections
  */
@@ -48,6 +49,7 @@ void Listeners::create_new(const char *nodeName, const char *port)
     std::cout << "INFO: " << sockfd << " file descriptor of listener socket\n";
     m_sockFds.push_back(sockfd);
 }
+
 /**
  * Check if the specified file descriptor is in the list of listener sockets
  *
@@ -58,6 +60,7 @@ bool Listeners::contains(int fd)
 {
     return std::find(m_sockFds.begin(), m_sockFds.end(), fd) != m_sockFds.end();
 }
+
 /**
  * Get the number of listener servers
  */
@@ -65,6 +68,7 @@ std::size_t Listeners::size()
 {
     return m_sockFds.size();
 }
+
 /**
  * Get the file descriptor of the listener socket at the specified index
  */
