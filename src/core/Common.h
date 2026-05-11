@@ -16,7 +16,7 @@
 #include <sys/socket.h> // Socket primitives (socket, bind, listen, accept)
 #include <unistd.h>
 
-// @NOTE: This should use exceptions, std::abort will cause issue so change the name!
+// @note: This should use exceptions, std::abort will cause issue so change the name!
 #define abort(msg)                                                                                                     \
     do                                                                                                                 \
     {                                                                                                                  \
@@ -26,5 +26,26 @@
     } while (0)
 
 #define UNUSED(v) ((void)v)
+
+#define UNIMPLEMENTED(message)                                                                                         \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        std::cerr << __FILE__ << ':' << __LINE__ << ": UNIMPLEMENTED: " << message << "\n";                            \
+        exit(1);                                                                                                       \
+    } while (0)
+
+#define UNREACHABLE(message)                                                                                           \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        std::cerr << __FILE__ << ':' << __LINE__ << ": UNREACHABLE: " << message << "\n";                              \
+        exit(1);                                                                                                       \
+    } while (0)
+
+#define TODO(message)                                                                                                  \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        std::cerr << __FILE__ << ':' << __LINE__ << ": TODO: " << message << "\n";                                     \
+        exit(1);                                                                                                       \
+    } while (0)
 
 std::string addr_to_string(struct sockaddr_in *addr);
