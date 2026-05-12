@@ -1,5 +1,5 @@
 #include "directive.hpp"
-#include "interperter.hpp"
+#include "interpreter.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <map>
@@ -11,15 +11,13 @@
  * Constructor for the Interpreter class.
  * @param directives A vector of Directive objects representing the parsed configuration directives.
  */
-Interperter::Interperter(const std::vector<Directive> &directives)
+Interpreter::Interpreter(const std::vector<Directive> &directives)
 {
-    std::vector<s_Server> srvs;
-
     for (size_t i = 0; i < directives.size(); i++)
     {
         if (directives[i].get_key() == "server")
         {
-            srvs.push_back(parseServer(directives[i]));
+            m_servers.push_back(parseServer(directives[i]));
         }
         else
         {
@@ -29,11 +27,27 @@ Interperter::Interperter(const std::vector<Directive> &directives)
 }
 
 /**
+ * Destructor for the Interpreter class.
+ */
+Interpreter::~Interpreter()
+{
+}
+
+/**
+ * Getter for the servers vector.
+ * @return A vector of s_Server objects representing the parsed server configurations.
+ */
+std::vector<s_Server> Interpreter::getServers() const
+{
+    return m_servers;
+}
+
+/**
  * server parser
  * @param directive The Directive object representing the server block to parse.
  * @return A Server object populated with the parsed configuration from the directive.
  */
-s_Server Interperter::parseServer(const Directive &directive)
+s_Server Interpreter::parseServer(const Directive &directive)
 {
     s_Server srv;
     std::vector<Directive> DirectiveChildren;
@@ -46,6 +60,12 @@ s_Server Interperter::parseServer(const Directive &directive)
             if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
                 throw std::runtime_error("Listen directive must have exactly one value");
             handleport(DirectiveChildren[i].get_values()[0], srv.ports);
+        }
+        else if (DirectiveChildren[i].get_key() == "server_name")
+        {
+            if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
+                throw std::runtime_error("Server name directive must have exactly one value");
+            srv.server_name = DirectiveChildren[i].get_values()[0];
         }
         else if (DirectiveChildren[i].get_key() == "max_body_size")
             srv.max_body_size = handlemaxbodysize(DirectiveChildren[i].get_values());
@@ -65,7 +85,9 @@ s_Server Interperter::parseServer(const Directive &directive)
             handleErrorPage(DirectiveChildren[i].get_values(), srv.error_page);
         else if (DirectiveChildren[i].get_key() == "location")
         {
-            srv.locations.push_back(handleLocation(DirectiveChildren, i, srv));
+            if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
+                throw std::runtime_error("Location directive must have exactly one value");
+            srv.locations.push_back(handleLocation(DirectiveChildren[i].get_children(), srv,  DirectiveChildren[i].get_values()[0]));
         }
         else
             throw std::runtime_error("Unknown directive in server block: " + DirectiveChildren[i].get_key());
@@ -73,7 +95,7 @@ s_Server Interperter::parseServer(const Directive &directive)
     return srv;
 }
 
-void Interperter::handleErrorPage(const std::vector<std::string> &values,
+void Interpreter::handleErrorPage(const std::vector<std::string> &values,
                                   std::map<int, std::string> &error_page)
 {
     if(values.size() != 2)
@@ -95,7 +117,7 @@ void Interperter::handleErrorPage(const std::vector<std::string> &values,
  * value is the port number.
  * @return A reference to the updated map containing the parsed IP and port information.
  */
-void Interperter::handleport(const std::string &value, std::map<std::string, int> &ports)
+void Interpreter::handleport(const std::string &value, std::map<std::string, int> &ports)
 {
     size_t pos = value.find(':');
 
@@ -136,7 +158,7 @@ void Interperter::handleport(const std::string &value, std::map<std::string, int
  * exactly one value with an optional unit (e.g., "10M", "500K").
  * @return A size_t value representing the parsed maximum body size in bytes.
  */
-size_t Interperter::handlemaxbodysize(const std::vector<std::string> &values)
+size_t Interpreter::handlemaxbodysize(const std::vector<std::string> &values)
 {
     if (values.empty() || values.size() > 1)
         throw std::runtime_error("max_body_size directive must have exactly one value");
@@ -169,24 +191,27 @@ size_t Interperter::handlemaxbodysize(const std::vector<std::string> &values)
  * location directives.
  * @return A reference to the populated s_Location object after processing the location directives.
  */
-s_Location &Interperter::handleLocation(const std::vector<Directive> &DirectiveChildren, size_t &i, s_Server &server)
+s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server, std::string path)
 {
     s_Location location;
 
+    location.path = path;
     location.root  = server.global_root;
     location.index = server.global_index;
-    location.path  = DirectiveChildren[i].get_values()[0];
-    for (; i < DirectiveChildren.size(); i++)
+    location.autoindex = false; // default value for autoindex is off
+    location.max_body_size = server.max_body_size; // default to server's max body size
+
+    for (size_t i = 0; i < DirectiveChildren.size(); i++)
     {
         if (DirectiveChildren[i].get_key() == "methods")
             location.methods = handleMethods(DirectiveChildren[i].get_values());
-        else if (DirectiveChildren[i].get_key() == "root" && location.root.empty())
+        else if (DirectiveChildren[i].get_key() == "root")
         {
             if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
                 throw std::runtime_error("Root directive must have exactly one value");
             location.root = DirectiveChildren[i].get_values()[0];
         }
-        else if (DirectiveChildren[i].get_key() == "index" && location.index.empty())
+        else if (DirectiveChildren[i].get_key() == "index")
         {
             if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
                 throw std::runtime_error("Index directive must have exactly one value");
@@ -213,9 +238,14 @@ s_Location &Interperter::handleLocation(const std::vector<Directive> &DirectiveC
         {
             location.CGIhandlers = handleCGI(DirectiveChildren[i].get_values());
         }
+        else if(DirectiveChildren[i].get_key() == "max_body_size")
+        {
+            location.max_body_size = handlemaxbodysize(DirectiveChildren[i].get_values());
+        }
         else
-            throw std::runtime_error("Unknown directive in location block: " + DirectiveChildren[i].get_key());
+            throw std::runtime_error("Unknown directive in location block: " + DirectiveChildren[i].get_key() + " in location " + location.path);
     }
+    return location;
 }
 
 /**
@@ -223,7 +253,7 @@ s_Location &Interperter::handleLocation(const std::vector<Directive> &DirectiveC
  * @param Methods A vector of strings representing the allowed HTTP methods.
  * @return A vector of strings containing the validated HTTP methods.
  */
-std::vector<std::string> Interperter::handleMethods(const std::vector<std::string> &Methods)
+std::vector<std::string> Interpreter::handleMethods(const std::vector<std::string> &Methods)
 {
     if (Methods.empty())
         throw std::runtime_error("HTTP Method field is empty");
@@ -243,7 +273,7 @@ std::vector<std::string> Interperter::handleMethods(const std::vector<std::strin
  * @return A boolean value where true represents "on" and false represents "off". If the value is invalid, an exception
  * is thrown.
  */
-bool Interperter::handleAutoindex(const std::string &value)
+bool Interpreter::handleAutoindex(const std::string &value)
 {
     if (value == "on")
         return true;
@@ -258,7 +288,7 @@ bool Interperter::handleAutoindex(const std::string &value)
  * @param code A string representing the redirect code.
  * @return An integer representing the validated redirect code.
  */
-int Interperter::handleRedirectCode(const std::string &code)
+int Interpreter::handleRedirectCode(const std::string &code)
 {
     if (code.empty())
         throw std::runtime_error("Redirect code is empty");
@@ -277,7 +307,7 @@ int Interperter::handleRedirectCode(const std::string &code)
  * @param cgi_values A vector of strings representing the CGI directive values.
  * @return A map containing the CGI extensions and their corresponding handler paths.
  */
-std::map<std::string, std::string> Interperter::handleCGI(const std::vector<std::string> &cgi_values)
+std::map<std::string, std::string> Interpreter::handleCGI(const std::vector<std::string> &cgi_values)
 {
     if (cgi_values.size() != 2)
         throw std::runtime_error("CGI directive must have exactly two values: extension and handler path");

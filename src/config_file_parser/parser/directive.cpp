@@ -146,10 +146,10 @@ void Directive::printDirective(int indent) const
 {
     std::string spaces(indent, ' ');
 
-    std::cout << spaces << this->m_key;
+    std::cout << spaces << " key=" << this->m_key;
 
     for (size_t i = 0; i < this->m_values.size(); i++)
-        std::cout << " " << this->m_values[i];
+        std::cout << " " <<  " value=" << this->m_values[i];
 
     std::cout << std::endl;
 
