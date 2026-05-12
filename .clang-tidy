@@ -5,7 +5,6 @@ Checks:
   - bugprone-use-after-move
   - modernize-deprecated-headers
   - modernize-use-bool-literals
-  - modernize-use-nullptr
   - readability-redundant-member-init
   - readability-operators-representation
   - performance-unnecessary-copy-initialization
@@ -97,7 +96,6 @@ Checks:
   - readability-delete-null-pointer
   - readability-deleted-default
   - readability-inconsistent-declaration-parameter-name
-  - readability-make-member-function-const
   - readability-misleading-indentation
   - readability-misplaced-array-index
   - readability-non-const-parameter
