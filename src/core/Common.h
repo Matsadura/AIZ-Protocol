@@ -16,6 +16,11 @@
 #include <sys/socket.h> // Socket primitives (socket, bind, listen, accept)
 #include <unistd.h>
 
+/**
+ * Log error context and exit the application
+ *
+ * @msg The error context to pass to perror
+ */
 // @note: This should use exceptions, std::abort will cause issue so change the name!
 #define abort(msg)                                                                                                     \
     do                                                                                                                 \
@@ -25,8 +30,18 @@
         exit(1);                                                                                                       \
     } while (0)
 
+/**
+ * Suppress unused variable compiler warnings
+ *
+ * @v The variable to mark as intentionally unused
+ */
 #define UNUSED(v) ((void)v)
 
+/**
+ * Terminate execution when hitting a missing feature
+ *
+ * @message Details about what functionality is missing
+ */
 #define UNIMPLEMENTED(message)                                                                                         \
     do                                                                                                                 \
     {                                                                                                                  \
@@ -34,6 +49,11 @@
         exit(1);                                                                                                       \
     } while (0)
 
+/**
+ * Terminate execution on supposedly impossible code paths
+ *
+ * @message Context explaining why this state is logically unreachable
+ */
 #define UNREACHABLE(message)                                                                                           \
     do                                                                                                                 \
     {                                                                                                                  \
@@ -41,6 +61,11 @@
         exit(1);                                                                                                       \
     } while (0)
 
+/**
+ * Terminate execution to highlight pending development work
+ *
+ * @message Description of the task left to be done
+ */
 #define TODO(message)                                                                                                  \
     do                                                                                                                 \
     {                                                                                                                  \
@@ -48,8 +73,12 @@
         exit(1);                                                                                                       \
     } while (0)
 
-// Simple logger
-// Usage: LOG_INFO("CONNECTION") << "new connection arrived"
+/**
+ * Stream-based logging macros
+ * Usage: LOG_INFO("MODULE") << "message\n";
+ *
+ * @module String literal identifying the originating subsystem
+ */
 #define LOG_INFO(module) (std::cout << "INFO: [" << (module) << "] > ")
 #define LOG_DEBUG(module) (std::cout << "DEBUG: [" << (module) << "] > ")
 #define LOG_ERROR(module) (std::cerr << "ERROR: [" << (module) << "] > ")

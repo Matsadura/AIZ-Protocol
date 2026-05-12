@@ -17,6 +17,9 @@ Connections &Connections::operator=(const Connections &other) // NOLINT
     return (*this);
 }
 
+/**
+ * Accept a fresh client connection and register it for monitoring
+ */
 int Connections::accept_new(int fd, Multiplexer &server)
 {
     connection_t conn;
@@ -31,6 +34,9 @@ int Connections::accept_new(int fd, Multiplexer &server)
     return conn.sockfd;
 }
 
+/**
+ * Safely tear down a client session and stop tracking its events
+ */
 void Connections::close_connection(int sockfd, Multiplexer &server)
 {
     LOG_INFO("CONNECTIONS") << "Close (fd=" << sockfd << ") connection\n";
@@ -46,6 +52,9 @@ void Connections::close_connection(int sockfd, Multiplexer &server)
     }
 }
 
+/**
+ * Grab a direct reference to an ongoing connection's data state
+ */
 Connections::connection_t &Connections::find(int sockfd)
 {
     for (std::vector<connection_t>::iterator it = m_list.begin(); it != m_list.end(); it++)
@@ -56,6 +65,12 @@ Connections::connection_t &Connections::find(int sockfd)
     UNREACHABLE("Epoll gives a none existing socket address, maybe forget to stop_monitoring it?");
 }
 
+/**
+ * Read incoming data from a ready socket and feed it into the request parser
+ *
+ * @sockfd The file descriptor signaling that data is available to read
+ * @server The multiplexer managing this connection's state
+ */
 void Connections::handle_read(int sockfd, Multiplexer &server)
 {
     Connections::connection_t &conn = Connections::find(sockfd);
