@@ -45,8 +45,7 @@ void Listeners::create_new(const char *nodeName, const char *port)
     if (listen(sockfd, Listeners::PandingLimit) != 0)
         abort("lister");
 
-    std::cout << "INFO: Listening at " << ai.toString() << "\n";
-    std::cout << "INFO: " << sockfd << " file descriptor of listener socket\n";
+    LOG_INFO("LISTENERS") << "Listening at " << ai.toString() << " (fd=" << sockfd << ")\n";
     m_sockFds.push_back(sockfd);
 }
 

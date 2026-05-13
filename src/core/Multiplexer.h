@@ -13,7 +13,7 @@ class Multiplexer
     int m_epfd;
     struct epoll_event m_evlist[MAX_EVENTS];
     Connections m_conns;
-    Listeners m_accepter;
+    Listeners m_listeners;
 
     /**
      * @note: this class is uncopyable
@@ -29,6 +29,7 @@ class Multiplexer
     void log_event(struct epoll_event event);
     void start_monitoring(int sockfd);
     void stop_monitoring(int sockfd);
+    void switch_interest(int sockfd, uint32_t events);
 };
 
 #endif
