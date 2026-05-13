@@ -406,13 +406,6 @@ bool Request::validateBodyHeaders(void)
         setError(BAD_REQUEST);
         return false;
     }
-
-    if (!m_raw_buffer.empty() && !has_content_length && !has_transfer_encoding)
-    {
-        setError(BAD_REQUEST);
-        return false;
-    }
-
     return true;
 }
 
@@ -450,28 +443,28 @@ void Request::parseContentLengthHeader(void)
 }
 
 /**
- * Validate that the body size does not exceed the Content-Length or the maximum body size limits.
- * @new_data_size: The size of the new data being added to the body.
- * Return: True if the body size is valid, false if it exceeds limits.
+ * Validate that the body size does not exceed:
+ * - the announced Content-Length
+ * - the server maximum body size
+ *
+ * @new_data_size: Number of bytes about to be appended.
+ * Return: True if valid, false otherwise.
  */
 bool Request::validateBodySize(size_t new_data_size)
 {
-    if (m_body.size() > m_content_length)
+    size_t future_size = m_body.size() + new_data_size;
+
+    if (future_size > m_content_length)
     {
         setError(BAD_REQUEST);
         return false;
     }
 
-    if (m_body.size() > m_max_body_size)
+    if (future_size > m_max_body_size)
     {
         setError(PAYLOAD_TOO_LARGE);
         return false;
     }
 
-    if (new_data_size > m_max_body_size - m_body.size())
-    {
-        setError(BAD_REQUEST);
-        return false;
-    }
     return true;
 }

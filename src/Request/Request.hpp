@@ -53,12 +53,15 @@ class Request
     int getErrorCode(void) const;
     bool isComplete(void) const;
 
+    void reset(void);
+
     std::string getMethod(void) const;
     std::string getURI(void) const;
     std::string getVersion(void) const;
     std::string getHeader(const std::string &key) const;
     std::map<std::string, std::string> getHeaders(void) const;
     const std::vector<char> &getBody(void) const;
+    const std::string &getRawBuffer(void) const;
 
   private:
     ParserState m_state;

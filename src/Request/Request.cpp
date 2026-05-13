@@ -186,6 +186,15 @@ const std::vector<char> &Request::getBody() const
 }
 
 /**
+ * Get the raw buffer containing the unprocessed request data.
+ * Return: A reference to the string containing the raw request data.
+ */
+const std::string &Request::getRawBuffer() const
+{
+    return m_raw_buffer;
+}
+
+/**
  * Set an error state for the request parser with a specific error code.
  * @error_code: The error code to set (e.g., BAD_REQUEST).
  */
@@ -193,6 +202,27 @@ void Request::setError(int error_code)
 {
     m_state      = ERROR;
     m_error_code = error_code;
+}
+
+/**
+ * Reset the request parser to its initial state, clearing all data and errors.
+ */
+void Request::reset(void)
+{
+    m_state      = REQUEST_LINE;
+    m_error_code = 0;
+    m_method.clear();
+    m_uri.clear();
+    m_path.clear();
+    m_query.clear();
+    m_version.clear();
+    m_headers.clear();
+    m_body.clear();
+    m_is_chunked         = false;
+    m_content_length     = 0;
+    m_chunk_state        = CHUNK_SIZE;
+    m_current_chunk_size = 0;
+    m_chunk_bytes_read   = 0;
 }
 
 /**
@@ -333,8 +363,7 @@ void Request::parseBody(void)
     if (!validateBodySize(bytes_to_append))
         return;
 
-    size_t bytes_needed = m_content_length - m_body.size();
-    if (m_raw_buffer.size() < bytes_needed)
+    if (m_raw_buffer.size() < body_bytes_needed)
     {
         m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.end());
         m_raw_buffer.clear();
@@ -342,7 +371,7 @@ void Request::parseBody(void)
     }
 
     m_body.insert(m_body.end(), m_raw_buffer.begin(),
-                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_needed));
-    m_raw_buffer.erase(0, bytes_needed);
+                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(body_bytes_needed));
+    m_raw_buffer.erase(0, body_bytes_needed);
     m_state = COMPLETE;
 }
