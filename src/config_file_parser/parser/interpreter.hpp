@@ -36,8 +36,8 @@ struct s_Server
     std::map<std::string, int> ports;
     size_t max_body_size;
 
-    std::string global_root;
-    std::string global_index;
+    std::string root;
+    std::string index;
     std::string server_name;
     // Locations
     std::vector<s_Location> locations;
