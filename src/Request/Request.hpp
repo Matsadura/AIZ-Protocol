@@ -21,6 +21,9 @@
 #define HEADER_TOO_LARGE 431
 #define NOT_IMPLEMENTED 501
 
+#define FULL_RESET 0
+#define PARTIAL_RESET 1
+
 class Request
 {
   public:
@@ -53,7 +56,7 @@ class Request
     int getErrorCode(void) const;
     bool isComplete(void) const;
 
-    void reset(void);
+    void reset(int reset_type);
 
     std::string getMethod(void) const;
     std::string getURI(void) const;
@@ -112,6 +115,7 @@ class Request
     bool validateContentLengthOverflow(const std::string &value, size_t &result);
     bool validateHeaderContentLength(const std::string &key, const std::string &value);
     bool validateHTTP11Host(void);
+    bool validateTransferEncoding(const std::string &value);
     bool isBodyChunked(void) const;
     void parseContentLengthHeader(void);
 

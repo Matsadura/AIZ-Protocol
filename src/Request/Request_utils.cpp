@@ -384,6 +384,49 @@ bool Request::validateHTTP11Host(void)
 }
 
 /**
+ * Validate the Transfer-Encoding header value to ensure it contains "chunked" if present.
+ * @value: The value of the Transfer-Encoding header to validate.
+ * Return: True if the Transfer-Encoding value is valid (contains "chunked"), false otherwise.
+ */
+bool Request::validateTransferEncoding(const std::string &value)
+{
+    std::vector<std::string> encodings = split(toLower(value), ',');
+
+    if (encodings.empty())
+        return false;
+
+    bool found_chunked = false;
+
+    for (size_t i = 0; i < encodings.size(); ++i)
+    {
+        std::string encoding = trim(encodings[i]);
+
+        if (encoding.empty())
+            return false;
+
+        if (encoding == "chunked")
+        {
+            if (i != encodings.size() - 1)
+                return false;
+
+            if (found_chunked)
+                return false;
+
+            found_chunked = true;
+        }
+    }
+
+    if (!found_chunked)
+    {
+        setError(NOT_IMPLEMENTED);
+        return false;
+    }
+
+    m_is_chunked = true;
+    return true;
+}
+
+/**
  * Validate body-related headers according to RFC rules.
  *
  * Rules:
@@ -407,27 +450,6 @@ bool Request::validateBodyHeaders(void)
         return false;
     }
     return true;
-}
-
-/**
- * Check if the request body is chunked based on the Transfer-Encoding header.
- * Return: True if the body is chunked, false otherwise.
- */
-bool Request::isBodyChunked(void) const
-{
-    std::map<std::string, std::string>::const_iterator it = m_headers.find("transfer-encoding");
-    if (it != m_headers.end())
-    {
-        std::string value                  = toLower(it->second);
-        std::vector<std::string> encodings = split(value, ',');
-        for (size_t i = 0; i < encodings.size(); ++i)
-        {
-            std::string encoding = trim(encodings[i]);
-            if (encoding == "chunked")
-                return true;
-        }
-    }
-    return false;
 }
 
 void Request::parseContentLengthHeader(void)
@@ -454,7 +476,7 @@ bool Request::validateBodySize(size_t new_data_size)
 {
     size_t future_size = m_body.size() + new_data_size;
 
-    if (future_size > m_content_length)
+    if (!m_is_chunked && future_size > m_content_length)
     {
         setError(BAD_REQUEST);
         return false;

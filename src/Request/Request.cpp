@@ -207,9 +207,11 @@ void Request::setError(int error_code)
 /**
  * Reset the request parser to its initial state, clearing all data and errors.
  */
-void Request::reset(void)
+void Request::reset(int reset_type)
 {
-    m_state      = REQUEST_LINE;
+    m_state = REQUEST_LINE;
+    if (reset_type == FULL_RESET)
+        m_raw_buffer.clear();
     m_error_code = 0;
     m_method.clear();
     m_uri.clear();
@@ -330,10 +332,10 @@ void Request::parseHeaders(void)
 
     parseContentLengthHeader();
 
-    m_is_chunked = isBodyChunked();
-
     bool has_content_length    = m_headers.find("content-length") != m_headers.end();
     bool has_transfer_encoding = m_headers.find("transfer-encoding") != m_headers.end();
+    if (has_transfer_encoding && !validateTransferEncoding(m_headers["transfer-encoding"]))
+        return;
 
     if (m_is_chunked || has_content_length || has_transfer_encoding)
         m_state = BODY;
