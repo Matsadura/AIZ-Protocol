@@ -393,7 +393,10 @@ bool Request::validateTransferEncoding(const std::string &value)
     std::vector<std::string> encodings = split(toLower(value), ',');
 
     if (encodings.empty())
+    {
+        setError(BAD_REQUEST);
         return false;
+    }
 
     bool found_chunked = false;
 
@@ -402,15 +405,24 @@ bool Request::validateTransferEncoding(const std::string &value)
         std::string encoding = trim(encodings[i]);
 
         if (encoding.empty())
+        {
+            setError(BAD_REQUEST);
             return false;
+        }
 
         if (encoding == "chunked")
         {
             if (i != encodings.size() - 1)
+            {
+                setError(BAD_REQUEST);
                 return false;
+            }
 
             if (found_chunked)
+            {
+                setError(BAD_REQUEST);
                 return false;
+            }
 
             found_chunked = true;
         }

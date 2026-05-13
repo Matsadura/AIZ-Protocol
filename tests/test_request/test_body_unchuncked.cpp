@@ -233,6 +233,32 @@ int main()
         printResult("Content-Length + Transfer-Encoding", req, Request::ERROR, BAD_REQUEST);
     }
 
+    {
+        Request req;
+
+        std::string request = "POST / HTTP/1.1\r\n"
+                              "Host: localhost\r\n"
+                              "Transfer-Encoding: chunked, chunked\r\n"
+                              "\r\n";
+
+        req.appendDataAndParse(request.c_str(), request.size());
+
+        printResult("Duplicate chunked transfer-coding", req, Request::ERROR, BAD_REQUEST);
+    }
+
+    {
+        Request req;
+
+        std::string request = "POST / HTTP/1.1\r\n"
+                              "Host: localhost\r\n"
+                              "Transfer-Encoding: chunked, gzip\r\n"
+                              "\r\n";
+
+        req.appendDataAndParse(request.c_str(), request.size());
+
+        printResult("Chunked not final transfer-coding", req, Request::ERROR, BAD_REQUEST);
+    }
+
     /*
     ============================================================
     EXTRA DATA AFTER BODY
