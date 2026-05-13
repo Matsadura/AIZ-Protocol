@@ -98,7 +98,7 @@ class Request
     bool validateURI(void);
     bool validateVersion(void);
 
-    /* Helper functions for header validation */
+    /* Helper functions for header validation and parsing */
 
     bool validateHeaderKeyFormat(const std::string &key);
     bool validateHeaderKeyNotEmpty(const std::string &key);
@@ -110,8 +110,10 @@ class Request
     bool validateHeaderContentLength(const std::string &key, const std::string &value);
     bool validateHTTP11Host(void);
     bool isBodyChunked(void) const;
+    void parseContentLengthHeader(void);
 
     /* Helper functions for body parsing */
+    bool validateBodyHeaders(void);
     bool validateBodySize(size_t new_data_size);
 };
 

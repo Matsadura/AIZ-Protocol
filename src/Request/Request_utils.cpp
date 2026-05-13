@@ -384,6 +384,39 @@ bool Request::validateHTTP11Host(void)
 }
 
 /**
+ * Validate body-related headers according to RFC rules.
+ *
+ * Rules:
+ * - Content-Length and Transfer-Encoding must not coexist.
+ * - If body bytes are already present, the request must define
+ *   the body length using either Content-Length or
+ *   Transfer-Encoding: chunked.
+ * - Content-Length: 0 is valid.
+ *
+ * Return: True if body headers are valid, false otherwise.
+ */
+bool Request::validateBodyHeaders(void)
+{
+    bool has_content_length = m_headers.find("content-length") != m_headers.end();
+
+    bool has_transfer_encoding = m_headers.find("transfer-encoding") != m_headers.end();
+
+    if (has_content_length && has_transfer_encoding)
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+
+    if (!m_raw_buffer.empty() && !has_content_length && !has_transfer_encoding)
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Check if the request body is chunked based on the Transfer-Encoding header.
  * Return: True if the body is chunked, false otherwise.
  */
@@ -402,6 +435,18 @@ bool Request::isBodyChunked(void) const
         }
     }
     return false;
+}
+
+void Request::parseContentLengthHeader(void)
+{
+
+    if (m_headers.find("content-length") != m_headers.end())
+    {
+        if (!m_headers["content-length"].empty())
+        {
+            m_content_length = std::strtoul(m_headers["content-length"].c_str(), NULL, 10);
+        }
+    }
 }
 
 /**

@@ -88,7 +88,7 @@ void Request::appendDataAndParse(const char *data, size_t length)
     m_raw_buffer.append(data, length);
     parseRequestLine();
     parseHeaders();
-    // parseBody();
+    parseBody();
 }
 
 /**
@@ -298,17 +298,13 @@ void Request::parseHeaders(void)
     if (!validateHTTP11Host())
         return;
 
-    if (m_headers.find("content-length") != m_headers.end())
-    {
-        if (!m_headers["content-length"].empty())
-        {
-            m_content_length = std::strtoul(m_headers["content-length"].c_str(), NULL, 10);
-        }
-    }
+    parseContentLengthHeader();
 
     m_is_chunked = isBodyChunked();
 
-    if (m_is_chunked || m_content_length > 0)
+    bool has_content_length = m_headers.find("content-length") != m_headers.end();
+
+    if (m_is_chunked || has_content_length)
         m_state = BODY;
     else
         m_state = COMPLETE;
@@ -320,6 +316,9 @@ void Request::parseHeaders(void)
 void Request::parseBody(void)
 {
     if (m_state != BODY)
+        return;
+
+    if (!validateBodyHeaders())
         return;
 
     if (m_is_chunked)
