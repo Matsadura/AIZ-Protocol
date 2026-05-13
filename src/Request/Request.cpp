@@ -302,9 +302,10 @@ void Request::parseHeaders(void)
 
     m_is_chunked = isBodyChunked();
 
-    bool has_content_length = m_headers.find("content-length") != m_headers.end();
+    bool has_content_length    = m_headers.find("content-length") != m_headers.end();
+    bool has_transfer_encoding = m_headers.find("transfer-encoding") != m_headers.end();
 
-    if (m_is_chunked || has_content_length)
+    if (m_is_chunked || has_content_length || has_transfer_encoding)
         m_state = BODY;
     else
         m_state = COMPLETE;
@@ -327,7 +328,9 @@ void Request::parseBody(void)
         return;
     }
 
-    if (!validateBodySize(m_raw_buffer.size()))
+    size_t body_bytes_needed = m_content_length - m_body.size();
+    size_t bytes_to_append   = std::min(body_bytes_needed, m_raw_buffer.size());
+    if (!validateBodySize(bytes_to_append))
         return;
 
     size_t bytes_needed = m_content_length - m_body.size();

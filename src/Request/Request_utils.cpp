@@ -462,9 +462,15 @@ bool Request::validateBodySize(size_t new_data_size)
         return false;
     }
 
-    if (m_body.size() + new_data_size > m_max_body_size)
+    if (m_body.size() > m_max_body_size)
     {
         setError(PAYLOAD_TOO_LARGE);
+        return false;
+    }
+
+    if (new_data_size > m_max_body_size - m_body.size())
+    {
+        setError(BAD_REQUEST);
         return false;
     }
     return true;
