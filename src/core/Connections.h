@@ -18,7 +18,7 @@ class Connections
     } connection_t;
 
   private:
-    std::vector<connection_t> m_list;
+    std::map<int, connection_t> m_list;
 
     /**
      * @note: this class is uncopyable
@@ -32,7 +32,7 @@ class Connections
 
     int accept_new(int fd, Multiplexer &server);
     void close_connection(int sockfd, Multiplexer &server);
-    void handle_read(int sockfd, Multiplexer &server);
+    void conn_handle_read(int sockfd, Multiplexer &server);
     connection_t &find(int sockfd);
 };
 
