@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdlib>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -20,6 +21,9 @@
 #define PAYLOAD_TOO_LARGE 413
 #define HEADER_TOO_LARGE 431
 #define NOT_IMPLEMENTED 501
+
+#define FULL_RESET 0
+#define PARTIAL_RESET 1
 
 class Request
 {
@@ -53,12 +57,15 @@ class Request
     int getErrorCode(void) const;
     bool isComplete(void) const;
 
+    void reset(int reset_type);
+
     std::string getMethod(void) const;
     std::string getURI(void) const;
     std::string getVersion(void) const;
     std::string getHeader(const std::string &key) const;
     std::map<std::string, std::string> getHeaders(void) const;
     const std::vector<char> &getBody(void) const;
+    const std::string &getRawBuffer(void) const;
 
   private:
     ParserState m_state;
@@ -98,7 +105,7 @@ class Request
     bool validateURI(void);
     bool validateVersion(void);
 
-    /* Helper functions for header validation */
+    /* Helper functions for header validation and parsing */
 
     bool validateHeaderKeyFormat(const std::string &key);
     bool validateHeaderKeyNotEmpty(const std::string &key);
@@ -109,7 +116,13 @@ class Request
     bool validateContentLengthOverflow(const std::string &value, size_t &result);
     bool validateHeaderContentLength(const std::string &key, const std::string &value);
     bool validateHTTP11Host(void);
+    bool validateTransferEncoding(const std::string &value);
     bool isBodyChunked(void) const;
+    void parseContentLengthHeader(void);
+
+    /* Helper functions for body parsing */
+    bool validateBodyHeaders(void);
+    bool validateBodySize(size_t new_data_size);
 };
 
 #endif /* REQUEST_HPP */

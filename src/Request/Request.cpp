@@ -1,5 +1,6 @@
 #include "Request.hpp"
 #include <cstddef>
+#include <cstdlib>
 #include <vector>
 
 /**
@@ -87,7 +88,7 @@ void Request::appendDataAndParse(const char *data, size_t length)
     m_raw_buffer.append(data, length);
     parseRequestLine();
     parseHeaders();
-    // parseBody();
+    parseBody();
 }
 
 /**
@@ -185,6 +186,15 @@ const std::vector<char> &Request::getBody() const
 }
 
 /**
+ * Get the raw buffer containing the unprocessed request data.
+ * Return: A reference to the string containing the raw request data.
+ */
+const std::string &Request::getRawBuffer() const
+{
+    return m_raw_buffer;
+}
+
+/**
  * Set an error state for the request parser with a specific error code.
  * @error_code: The error code to set (e.g., BAD_REQUEST).
  */
@@ -192,6 +202,29 @@ void Request::setError(int error_code)
 {
     m_state      = ERROR;
     m_error_code = error_code;
+}
+
+/**
+ * Reset the request parser to its initial state, clearing all data and errors.
+ */
+void Request::reset(int reset_type)
+{
+    m_state = REQUEST_LINE;
+    if (reset_type == FULL_RESET)
+        m_raw_buffer.clear();
+    m_error_code = 0;
+    m_method.clear();
+    m_uri.clear();
+    m_path.clear();
+    m_query.clear();
+    m_version.clear();
+    m_headers.clear();
+    m_body.clear();
+    m_is_chunked         = false;
+    m_content_length     = 0;
+    m_chunk_state        = CHUNK_SIZE;
+    m_current_chunk_size = 0;
+    m_chunk_bytes_read   = 0;
 }
 
 /**
@@ -297,10 +330,50 @@ void Request::parseHeaders(void)
     if (!validateHTTP11Host())
         return;
 
-    m_is_chunked = isBodyChunked();
+    parseContentLengthHeader();
 
-    if (m_is_chunked || m_content_length > 0)
+    bool has_content_length    = m_headers.find("content-length") != m_headers.end();
+    bool has_transfer_encoding = m_headers.find("transfer-encoding") != m_headers.end();
+    if (has_transfer_encoding && !validateTransferEncoding(m_headers["transfer-encoding"]))
+        return;
+
+    if (m_is_chunked || has_content_length || has_transfer_encoding)
         m_state = BODY;
     else
         m_state = COMPLETE;
+}
+
+/**
+ * Parse the body of the HTTP request, handling both chunked and non-chunked bodies.
+ */
+void Request::parseBody(void)
+{
+    if (m_state != BODY)
+        return;
+
+    if (!validateBodyHeaders())
+        return;
+
+    if (m_is_chunked)
+    {
+        // parseChunkedBody();
+        return;
+    }
+
+    size_t body_bytes_needed = m_content_length - m_body.size();
+    size_t bytes_to_append   = std::min(body_bytes_needed, m_raw_buffer.size());
+    if (!validateBodySize(bytes_to_append))
+        return;
+
+    if (m_raw_buffer.size() < body_bytes_needed)
+    {
+        m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.end());
+        m_raw_buffer.clear();
+        return;
+    }
+
+    m_body.insert(m_body.end(), m_raw_buffer.begin(),
+                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(body_bytes_needed));
+    m_raw_buffer.erase(0, body_bytes_needed);
+    m_state = COMPLETE;
 }
