@@ -347,96 +347,24 @@ void Request::parseChunkedBody(void)
 {
     while (!m_raw_buffer.empty() && m_state != COMPLETE)
     {
-        if (m_chunk_state == CHUNK_SIZE)
+        switch (m_chunk_state)
         {
-            size_t crlf_pos = m_raw_buffer.find("\r\n");
-            if (crlf_pos == std::string::npos)
-                return;
-
-            std::string size_line = m_raw_buffer.substr(0, crlf_pos);
-
-            size_t semi_pos      = size_line.find(';');
-            std::string size_str = (semi_pos == std::string::npos) ? size_line : size_line.substr(0, semi_pos);
-
-            if (size_str.empty() || size_str.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
-            {
-                setError(BAD_REQUEST);
-                return;
-            }
-
-            char *endptr       = NULL;
-            errno              = 0;
-            unsigned long size = std::strtoul(size_str.c_str(), &endptr, 16);
-            if (*endptr != '\0' || errno == ERANGE)
-            {
-                setError(BAD_REQUEST);
-                return;
-            }
-
-            m_chunk_bytes_remaining = size;
-            m_raw_buffer.erase(0, crlf_pos + 2);
-
-            if (m_chunk_bytes_remaining == 0)
-            {
-                m_chunk_state = CHUNK_TRAILER;
-            }
-            else
-            {
-                m_chunk_state = CHUNK_DATA;
-            }
-        }
-
-        else if (m_chunk_state == CHUNK_DATA)
-        {
-            if (m_raw_buffer.empty())
-                return;
-
-            size_t bytes_to_append = std::min(m_chunk_bytes_remaining, m_raw_buffer.size());
-
-            if (m_body.size() + bytes_to_append > m_max_body_size)
-            {
-                setError(PAYLOAD_TOO_LARGE);
-                return;
-            }
-
-            m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_to_append));
-            m_raw_buffer.erase(0, bytes_to_append);
-            m_chunk_bytes_remaining -= bytes_to_append;
-
-            if (m_chunk_bytes_remaining == 0)
-            {
-                m_chunk_state = CHUNK_DATA_CRLF;
-            }
-        }
-
-        else if (m_chunk_state == CHUNK_DATA_CRLF)
-        {
-            if (m_raw_buffer.size() < 2)
-                return;
-
-            if (m_raw_buffer[0] != '\r' || m_raw_buffer[1] != '\n')
-            {
-                setError(BAD_REQUEST);
-                return;
-            }
-
-            m_raw_buffer.erase(0, 2);
-            m_chunk_state = CHUNK_SIZE;
-        }
-
-        else if (m_chunk_state == CHUNK_TRAILER)
-        {
-            size_t crlf_pos = m_raw_buffer.find("\r\n");
-            if (crlf_pos == std::string::npos)
-                return;
-
-            if (crlf_pos == 0)
-            {
-                m_raw_buffer.erase(0, 2);
-                m_state = COMPLETE;
-                return;
-            }
-            m_raw_buffer.erase(0, crlf_pos + 2);
+            case CHUNK_SIZE:
+                if (!parseChunkSize())
+                    return;
+                break;
+            case CHUNK_DATA:
+                if (!parseChunkData())
+                    return;
+                break;
+            case CHUNK_DATA_CRLF:
+                if (!parseChunkDataCRLF())
+                    return;
+                break;
+            case CHUNK_TRAILER:
+                if (!parseChunkTrailer())
+                    return;
+                break;
         }
     }
 }

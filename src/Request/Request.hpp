@@ -123,6 +123,11 @@ class Request
     /* Helper functions for body parsing */
     bool validateBodyHeaders(void);
     bool validateBodySize(size_t new_data_size);
+    bool validateChunkSizeFormat(const std::string &line);
+    bool parseChunkSize(void);
+    bool parseChunkData(void);
+    bool parseChunkDataCRLF(void);
+    bool parseChunkTrailer(void);
 };
 
 #endif /* REQUEST_HPP */
