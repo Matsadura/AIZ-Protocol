@@ -399,7 +399,7 @@ void Request::parseChunkedBody(void)
                 return;
             }
 
-            m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.begin() + bytes_to_append);
+            m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_to_append));
             m_raw_buffer.erase(0, bytes_to_append);
             m_chunk_bytes_remaining -= bytes_to_append;
 
