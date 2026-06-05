@@ -1,4 +1,5 @@
 #include "Request.hpp"
+#include <cerrno>
 #include <cstddef>
 #include <cstdlib>
 #include <vector>
@@ -13,8 +14,7 @@ Request::Request(void) :
     m_is_chunked(false),
     m_content_length(0),
     m_chunk_state(CHUNK_SIZE),
-    m_current_chunk_size(0),
-    m_chunk_bytes_read(0)
+    m_chunk_bytes_remaining(0)
 {
 }
 
@@ -37,8 +37,7 @@ Request::Request(const Request &other) :
     m_is_chunked(other.m_is_chunked),
     m_content_length(other.m_content_length),
     m_chunk_state(other.m_chunk_state),
-    m_current_chunk_size(other.m_current_chunk_size),
-    m_chunk_bytes_read(other.m_chunk_bytes_read)
+    m_chunk_bytes_remaining(other.m_chunk_bytes_remaining)
 {
 }
 
@@ -51,22 +50,21 @@ Request &Request::operator=(const Request &other)
 {
     if (this != &other)
     {
-        m_state              = other.m_state;
-        m_raw_buffer         = other.m_raw_buffer;
-        m_error_code         = other.m_error_code;
-        m_max_body_size      = other.m_max_body_size;
-        m_method             = other.m_method;
-        m_uri                = other.m_uri;
-        m_path               = other.m_path;
-        m_query              = other.m_query;
-        m_version            = other.m_version;
-        m_headers            = other.m_headers;
-        m_body               = other.m_body;
-        m_is_chunked         = other.m_is_chunked;
-        m_content_length     = other.m_content_length;
-        m_chunk_state        = other.m_chunk_state;
-        m_current_chunk_size = other.m_current_chunk_size;
-        m_chunk_bytes_read   = other.m_chunk_bytes_read;
+        m_state                 = other.m_state;
+        m_raw_buffer            = other.m_raw_buffer;
+        m_error_code            = other.m_error_code;
+        m_max_body_size         = other.m_max_body_size;
+        m_method                = other.m_method;
+        m_uri                   = other.m_uri;
+        m_path                  = other.m_path;
+        m_query                 = other.m_query;
+        m_version               = other.m_version;
+        m_headers               = other.m_headers;
+        m_body                  = other.m_body;
+        m_is_chunked            = other.m_is_chunked;
+        m_content_length        = other.m_content_length;
+        m_chunk_state           = other.m_chunk_state;
+        m_chunk_bytes_remaining = other.m_chunk_bytes_remaining;
     }
     return *this;
 }
@@ -220,11 +218,10 @@ void Request::reset(int reset_type)
     m_version.clear();
     m_headers.clear();
     m_body.clear();
-    m_is_chunked         = false;
-    m_content_length     = 0;
-    m_chunk_state        = CHUNK_SIZE;
-    m_current_chunk_size = 0;
-    m_chunk_bytes_read   = 0;
+    m_is_chunked            = false;
+    m_content_length        = 0;
+    m_chunk_state           = CHUNK_SIZE;
+    m_chunk_bytes_remaining = 0;
 }
 
 /**
@@ -344,6 +341,107 @@ void Request::parseHeaders(void)
 }
 
 /**
+ * Parse the body of the HTTP request when Transfer-Encoding is set to chunked.
+ */
+void Request::parseChunkedBody(void)
+{
+    while (!m_raw_buffer.empty() && m_state != COMPLETE)
+    {
+        if (m_chunk_state == CHUNK_SIZE)
+        {
+            size_t crlf_pos = m_raw_buffer.find("\r\n");
+            if (crlf_pos == std::string::npos)
+                return;
+
+            std::string size_line = m_raw_buffer.substr(0, crlf_pos);
+
+            size_t semi_pos      = size_line.find(';');
+            std::string size_str = (semi_pos == std::string::npos) ? size_line : size_line.substr(0, semi_pos);
+
+            if (size_str.empty() || size_str.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
+            {
+                setError(BAD_REQUEST);
+                return;
+            }
+
+            char *endptr       = NULL;
+            errno              = 0;
+            unsigned long size = std::strtoul(size_str.c_str(), &endptr, 16);
+            if (*endptr != '\0' || errno == ERANGE)
+            {
+                setError(BAD_REQUEST);
+                return;
+            }
+
+            m_chunk_bytes_remaining = size;
+            m_raw_buffer.erase(0, crlf_pos + 2);
+
+            if (m_chunk_bytes_remaining == 0)
+            {
+                m_chunk_state = CHUNK_TRAILER;
+            }
+            else
+            {
+                m_chunk_state = CHUNK_DATA;
+            }
+        }
+
+        else if (m_chunk_state == CHUNK_DATA)
+        {
+            if (m_raw_buffer.empty())
+                return;
+
+            size_t bytes_to_append = std::min(m_chunk_bytes_remaining, m_raw_buffer.size());
+
+            if (m_body.size() + bytes_to_append > m_max_body_size)
+            {
+                setError(PAYLOAD_TOO_LARGE);
+                return;
+            }
+
+            m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.begin() + bytes_to_append);
+            m_raw_buffer.erase(0, bytes_to_append);
+            m_chunk_bytes_remaining -= bytes_to_append;
+
+            if (m_chunk_bytes_remaining == 0)
+            {
+                m_chunk_state = CHUNK_DATA_CRLF;
+            }
+        }
+
+        else if (m_chunk_state == CHUNK_DATA_CRLF)
+        {
+            if (m_raw_buffer.size() < 2)
+                return;
+
+            if (m_raw_buffer[0] != '\r' || m_raw_buffer[1] != '\n')
+            {
+                setError(BAD_REQUEST);
+                return;
+            }
+
+            m_raw_buffer.erase(0, 2);
+            m_chunk_state = CHUNK_SIZE;
+        }
+
+        else if (m_chunk_state == CHUNK_TRAILER)
+        {
+            size_t crlf_pos = m_raw_buffer.find("\r\n");
+            if (crlf_pos == std::string::npos)
+                return;
+
+            if (crlf_pos == 0)
+            {
+                m_raw_buffer.erase(0, 2);
+                m_state = COMPLETE;
+                return;
+            }
+            m_raw_buffer.erase(0, crlf_pos + 2);
+        }
+    }
+}
+
+/**
  * Parse the body of the HTTP request, handling both chunked and non-chunked bodies.
  */
 void Request::parseBody(void)
@@ -356,7 +454,7 @@ void Request::parseBody(void)
 
     if (m_is_chunked)
     {
-        // parseChunkedBody();
+        parseChunkedBody();
         return;
     }
 

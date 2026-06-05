@@ -41,6 +41,7 @@ class Request
     {
         CHUNK_SIZE,
         CHUNK_DATA,
+        CHUNK_DATA_CRLF,
         CHUNK_TRAILER
     };
 
@@ -85,8 +86,7 @@ class Request
     size_t m_content_length;
 
     ChunkState m_chunk_state;
-    size_t m_current_chunk_size;
-    size_t m_chunk_bytes_read;
+    size_t m_chunk_bytes_remaining;
 
     /* Core parsing functions */
 
