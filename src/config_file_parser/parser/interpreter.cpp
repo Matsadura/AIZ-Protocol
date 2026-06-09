@@ -73,13 +73,13 @@ s_Server Interpreter::parseServer(const Directive &directive)
         {
             if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
                 throw std::runtime_error("Root directive must have exactly one value");
-            srv.global_root = DirectiveChildren[i].get_values()[0];
+            srv.root = DirectiveChildren[i].get_values()[0];
         }
         else if (DirectiveChildren[i].get_key() == "index")
         {
             if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
                 throw std::runtime_error("Index directive must have exactly one value");
-            srv.global_index = DirectiveChildren[i].get_values()[0];
+            srv.index = DirectiveChildren[i].get_values()[0];
         }
         else if (DirectiveChildren[i].get_key() == "error_page")
             handleErrorPage(DirectiveChildren[i].get_values(), srv.error_page);
@@ -196,8 +196,8 @@ s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveCh
     s_Location location;
 
     location.path = path;
-    location.root  = server.global_root;
-    location.index = server.global_index;
+    location.root  = server.root;
+    location.index = server.index;
     location.autoindex = false; // default value for autoindex is off
     location.max_body_size = server.max_body_size; // default to server's max body size
 

@@ -38,23 +38,12 @@ std::vector<s_Server> ConfigFile::getConfig() const
  * @return s_Server structure representing the specified server configuration
  * @throws std::out_of_range if the ID is invalid
  */
-s_Server ConfigFile::getServerConfig(int ID) const
+s_Server ConfigFile::getServerById(int ID) const
 {
     if (ID < 0 || static_cast<size_t>(ID) >= m_ConfigData.size())
         throw std::out_of_range("Server ID out of range");
     return m_ConfigData[ID];
 }
 
-std::string ConfigFile::getServerPath(int server_ID, const std::string &uri) const
-{
-    s_Server server = getServerConfig(server_ID);
-    for (size_t i = 0; i < server.locations.size(); ++i)
-    {
-        if (server.locations[i].path == uri)
-        {
-            //parse_root
-        }
-    }
-    return server.root + uri; // Default to server root if no location matches
-}
+
 

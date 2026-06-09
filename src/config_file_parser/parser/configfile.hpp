@@ -13,6 +13,5 @@ class ConfigFile
     ~ConfigFile();
 
     std::vector<s_Server> getConfig() const;
-    s_Server getServerConfig(int ID) const;
-    std::string getServerPath(int server_ID, const std::string &uri) const;
+    s_Server getServerById(int ID) const;
 };
