@@ -1,5 +1,5 @@
-#include "directive.hpp"
 #include "interpreter.hpp"
+#include "directive.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <map>
@@ -87,7 +87,8 @@ s_Server Interpreter::parseServer(const Directive &directive)
         {
             if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
                 throw std::runtime_error("Location directive must have exactly one value");
-            srv.locations.push_back(handleLocation(DirectiveChildren[i].get_children(), srv,  DirectiveChildren[i].get_values()[0]));
+            srv.locations.push_back(
+                handleLocation(DirectiveChildren[i].get_children(), srv, DirectiveChildren[i].get_values()[0]));
         }
         else
             throw std::runtime_error("Unknown directive in server block: " + DirectiveChildren[i].get_key());
@@ -95,16 +96,15 @@ s_Server Interpreter::parseServer(const Directive &directive)
     return srv;
 }
 
-void Interpreter::handleErrorPage(const std::vector<std::string> &values,
-                                  std::map<int, std::string> &error_page)
+void Interpreter::handleErrorPage(const std::vector<std::string> &values, std::map<int, std::string> &error_page)
 {
-    if(values.size() != 2)
+    if (values.size() != 2)
         throw std::runtime_error("Error page directive must have exactly two values: error code and page path");
     char *rest;
     double error_code = strtod(values[0].c_str(), &rest);
-    if(*rest)
+    if (*rest)
         throw std::runtime_error("Error code must be a number");
-    if(error_code < 400 || error_code > 599)
+    if (error_code < 400 || error_code > 599)
         throw std::runtime_error("Invalid error code: " + values[0]);
     error_page[static_cast<int>(error_code)] = values[1];
 }
@@ -191,14 +191,15 @@ size_t Interpreter::handlemaxbodysize(const std::vector<std::string> &values)
  * location directives.
  * @return A reference to the populated s_Location object after processing the location directives.
  */
-s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server, std::string path)
+s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server,
+                                       std::string path)
 {
     s_Location location;
 
-    location.path = path;
-    location.root  = server.root;
-    location.index = server.index;
-    location.autoindex = false; // default value for autoindex is off
+    location.path          = path;
+    location.root          = server.root;
+    location.index         = server.index;
+    location.autoindex     = false;                // default value for autoindex is off
     location.max_body_size = server.max_body_size; // default to server's max body size
 
     for (size_t i = 0; i < DirectiveChildren.size(); i++)
@@ -238,12 +239,13 @@ s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveCh
         {
             location.CGIhandlers = handleCGI(DirectiveChildren[i].get_values());
         }
-        else if(DirectiveChildren[i].get_key() == "max_body_size")
+        else if (DirectiveChildren[i].get_key() == "max_body_size")
         {
             location.max_body_size = handlemaxbodysize(DirectiveChildren[i].get_values());
         }
         else
-            throw std::runtime_error("Unknown directive in location block: " + DirectiveChildren[i].get_key() + " in location " + location.path);
+            throw std::runtime_error("Unknown directive in location block: " + DirectiveChildren[i].get_key() +
+                                     " in location " + location.path);
     }
     return location;
 }

@@ -44,6 +44,3 @@ s_Server ConfigFile::getServerById(int ID) const
         throw std::out_of_range("Server ID out of range");
     return m_ConfigData[ID];
 }
-
-
-
