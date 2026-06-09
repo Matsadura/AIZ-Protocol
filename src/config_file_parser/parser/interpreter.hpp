@@ -3,10 +3,10 @@
 #include "directive.hpp"
 #include "parser.hpp"
 #include <cstddef>
+#include <cstdlib>
 #include <map>
 #include <string>
 #include <vector>
-#include <cstdlib>
 
 struct s_Location
 {
@@ -53,18 +53,16 @@ class Interpreter
     Interpreter(const std::vector<Directive> &directives);
     ~Interpreter();
 
-    std::vector<s_Server> getServers() const;   
+    std::vector<s_Server> getServers() const;
+
   private:
     s_Server parseServer(const Directive &directive);
-    s_Location handleLocation(const std::vector<Directive> &DirectiveChildren,
-                                        s_Server &server, std::string path);
+    s_Location handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server, std::string path);
     void handleport(const std::string &value, std::map<std::string, int> &ports);
-    std::vector<std::string>    handleMethods(const std::vector<std::string> &Methods);
+    std::vector<std::string> handleMethods(const std::vector<std::string> &Methods);
     bool handleAutoindex(const std::string &value);
     int handleRedirectCode(const std::string &code);
     std::map<std::string, std::string> handleCGI(const std::vector<std::string> &cgi_values);
     size_t handlemaxbodysize(const std::vector<std::string> &values);
-    void handleErrorPage(const std::vector<std::string> &values,
-                                  std::map<int, std::string> &error_page);
-
+    void handleErrorPage(const std::vector<std::string> &values, std::map<int, std::string> &error_page);
 };
