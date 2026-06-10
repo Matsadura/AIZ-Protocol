@@ -57,7 +57,7 @@ class Interpreter
 
   private:
     s_Server parseServer(const Directive &directive);
-    s_Location handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server, std::string path);
+    s_Location handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server, const std::string &path);
     void handleport(const std::string &value, std::map<std::string, int> &ports);
     std::vector<std::string> handleMethods(const std::vector<std::string> &Methods);
     bool handleAutoindex(const std::string &value);

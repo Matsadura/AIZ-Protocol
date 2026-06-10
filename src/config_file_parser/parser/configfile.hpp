@@ -2,6 +2,7 @@
 
 #include "interpreter.hpp"
 #include <string>
+#include <vector>
 
 class ConfigFile
 {

@@ -100,6 +100,8 @@ void Interpreter::handleErrorPage(const std::vector<std::string> &values, std::m
 {
     if (values.size() != 2)
         throw std::runtime_error("Error page directive must have exactly two values: error code and page path");
+    if (values[0].find('.') != std::string::npos)
+        throw std::runtime_error("Error code must be an integer");
     char *rest;
     double error_code = strtod(values[0].c_str(), &rest);
     if (*rest)
@@ -121,10 +123,12 @@ void Interpreter::handleport(const std::string &value, std::map<std::string, int
 {
     size_t pos = value.find(':');
 
-    if (pos != std::string::npos)
+    if (pos != std::string::npos) // case = listen 127.0.0.1:9090;
     {
         std::string ip       = value.substr(0, pos);
         std::string port_str = value.substr(pos + 1);
+        if (port_str.find('.') != std::string::npos)
+            throw std::runtime_error("Port must be an integer");
         char *rest;
         double num = strtod(port_str.c_str(), &rest);
         if (*rest != '\0')
@@ -133,15 +137,17 @@ void Interpreter::handleport(const std::string &value, std::map<std::string, int
             throw std::runtime_error("Invalid port number: " + port_str);
         ports[ip] = static_cast<int>(num);
     }
-    else
+    else // case = listen 127.0.0.1;
     {
         if (value.find('.') != std::string::npos)
         {
             ports[value] = 80; // default port for IP addresses
         }
-        else
+        else                   //   case = listen 8080;
         {
             char *rest;
+            if (value.find('.') != std::string::npos)
+                throw std::runtime_error("Port must be an integer");
             double num = strtod(value.c_str(), &rest);
             if (*rest != '\0')
                 throw std::runtime_error("Port must be a number");
@@ -164,7 +170,9 @@ size_t Interpreter::handlemaxbodysize(const std::vector<std::string> &values)
         throw std::runtime_error("max_body_size directive must have exactly one value");
     char *rest;
     double num = std::strtod(values[0].c_str(), &rest);
-    if (!*rest)
+    if (num < 0)
+        throw std::runtime_error("max_body_size must be a non-negative number");
+    if (!*rest) // in bytes
         return (static_cast<size_t>(num));
     else
     {
@@ -192,7 +200,7 @@ size_t Interpreter::handlemaxbodysize(const std::vector<std::string> &values)
  * @return A reference to the populated s_Location object after processing the location directives.
  */
 s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server,
-                                       std::string path)
+                                       const std::string &path)
 {
     s_Location location;
 
@@ -201,7 +209,7 @@ s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveCh
     location.index         = server.index;
     location.autoindex     = false;                // default value for autoindex is off
     location.max_body_size = server.max_body_size; // default to server's max body size
-
+    location.redirect_code = 0;                    // default to no redirect
     for (size_t i = 0; i < DirectiveChildren.size(); i++)
     {
         if (DirectiveChildren[i].get_key() == "methods")
@@ -220,6 +228,8 @@ s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveCh
         }
         else if (DirectiveChildren[i].get_key() == "autoindex")
         {
+            if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
+                throw std::runtime_error("Autoindex directive must have exactly one value");
             location.autoindex = handleAutoindex(DirectiveChildren[i].get_values()[0]);
         }
         else if (DirectiveChildren[i].get_key() == "upload_store")
