@@ -121,7 +121,7 @@ void Interpreter::handleErrorPage(const std::vector<std::string> &values, std::m
  * value is the port number.
  * @return A reference to the updated map containing the parsed IP and port information.
  */
-void Interpreter::handleport(const std::string &value, std::map<std::string, std::vector<int> > &ports)
+void Interpreter::handleport(const std::string &value, std::map<std::string, std::vector<int> > &ports) //NOLINT
 {
     size_t pos = value.find(':');
     if (pos != std::string::npos) // case = listen 127.0.0.1:9090;

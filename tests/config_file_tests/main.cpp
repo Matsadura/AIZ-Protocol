@@ -71,7 +71,7 @@ int main(int argc, char **argv)
             std::cout << "SERVER [" << i << "]\n";
 
             // Print Listeners (Map: IP -> Port)
-            for (std::map<std::string, std::vector<int> >::const_iterator pit = servers[i].ports.begin();
+            for (std::map<std::string, std::vector<int> >::const_iterator pit = servers[i].ports.begin(); //NOLINT
                  pit != servers[i].ports.end(); ++pit)
             {
                 std::cout << "  - Listen: " << pit->first << ":";
