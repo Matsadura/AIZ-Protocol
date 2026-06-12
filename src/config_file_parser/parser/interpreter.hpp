@@ -34,7 +34,7 @@ struct s_Location
 
 struct s_Server
 {
-    std::map<std::string, std::vector<int> > ports; // NOLINT
+    std::map<std::string, std::vector<int>> ports; // NOLINT
     size_t max_body_size;
 
     std::string root;
@@ -60,7 +60,7 @@ class Interpreter
     s_Server parseServer(const Directive &directive);
     s_Location handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server,
                               const std::string &path);
-    void handleport(const std::string &value, std::map<std::string, std::vector<int> > &ports); // NOLINT
+    void handleport(const std::string &value, std::map<std::string, std::vector<int>> &ports); // NOLINT
     std::vector<std::string> handleMethods(const std::vector<std::string> &Methods);
     bool handleAutoindex(const std::string &value);
     int handleRedirectCode(const std::string &code);
