@@ -14,3 +14,4 @@ BraceWrapping:
 IndentCaseLabels: true
 AlignConsecutiveAssignments: Consecutive
 AlwaysBreakTemplateDeclarations: Yes
+Standard: c++03
