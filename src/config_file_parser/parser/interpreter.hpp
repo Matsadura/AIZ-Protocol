@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#define DEFAULT_MAX_BODY_SIZE 1000000
 
 struct s_Location
 {
@@ -33,7 +34,7 @@ struct s_Location
 
 struct s_Server
 {
-    std::map<std::string, int> ports;
+    std::map<std::string, std::vector<int> > ports;
     size_t max_body_size;
 
     std::string root;
@@ -57,12 +58,13 @@ class Interpreter
 
   private:
     s_Server parseServer(const Directive &directive);
-    s_Location handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server, const std::string &path);
-    void handleport(const std::string &value, std::map<std::string, int> &ports);
+    s_Location handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server,
+                              const std::string &path);
+    void handleport(const std::string &value, std::map<std::string, std::vector<int> > &ports);
     std::vector<std::string> handleMethods(const std::vector<std::string> &Methods);
     bool handleAutoindex(const std::string &value);
     int handleRedirectCode(const std::string &code);
-    std::map<std::string, std::string> handleCGI(const std::vector<std::string> &cgi_values);
+    void handleCGI(const std::vector<std::string> &cgi_values, std::map<std::string, std::string> &cgihandler);
     size_t handlemaxbodysize(const std::vector<std::string> &values);
     void handleErrorPage(const std::vector<std::string> &values, std::map<int, std::string> &error_page);
 };

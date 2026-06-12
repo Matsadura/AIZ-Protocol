@@ -41,7 +41,7 @@ void Parser::print_directives()
  * Getter for the directives vector.
  * @return A vector of Directive objects representing the parsed directives.
  */
-std::vector<Directive> Parser::getDirectives() const
+const std::vector<Directive> &Parser::getDirectives() const
 {
     return m_directives;
 }

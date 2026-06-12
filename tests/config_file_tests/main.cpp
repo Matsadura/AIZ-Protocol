@@ -71,10 +71,20 @@ int main(int argc, char **argv)
             std::cout << "SERVER [" << i << "]\n";
 
             // Print Listeners (Map: IP -> Port)
-            std::map<std::string, int>::const_iterator pit;
-            for (pit = servers[i].ports.begin(); pit != servers[i].ports.end(); ++pit)
+            for (std::map<std::string, std::vector<int> >::const_iterator pit = servers[i].ports.begin();
+                 pit != servers[i].ports.end(); ++pit)
             {
-                std::cout << "  - Listen: " << pit->first << ":" << pit->second << "\n";
+                std::cout << "  - Listen: " << pit->first << ":";
+
+                for (std::vector<int>::const_iterator it = pit->second.begin(); it != pit->second.end(); ++it)
+                {
+                    std::cout << *it;
+
+                    if (it + 1 != pit->second.end())
+                        std::cout << " ";
+                }
+
+                std::cout << "\n";
             }
 
             std::cout << "  - Global Root:  " << servers[i].root << "\n";

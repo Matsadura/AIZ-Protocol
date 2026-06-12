@@ -49,7 +49,8 @@ std::vector<s_Server> Interpreter::getServers() const
  */
 s_Server Interpreter::parseServer(const Directive &directive)
 {
-    s_Server srv;
+    s_Server srv      = s_Server();
+    srv.max_body_size = DEFAULT_MAX_BODY_SIZE;
     std::vector<Directive> DirectiveChildren;
 
     DirectiveChildren = directive.get_children();
@@ -59,6 +60,7 @@ s_Server Interpreter::parseServer(const Directive &directive)
         {
             if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
                 throw std::runtime_error("Listen directive must have exactly one value");
+
             handleport(DirectiveChildren[i].get_values()[0], srv.ports);
         }
         else if (DirectiveChildren[i].get_key() == "server_name")
@@ -119,10 +121,9 @@ void Interpreter::handleErrorPage(const std::vector<std::string> &values, std::m
  * value is the port number.
  * @return A reference to the updated map containing the parsed IP and port information.
  */
-void Interpreter::handleport(const std::string &value, std::map<std::string, int> &ports)
+void Interpreter::handleport(const std::string &value, std::map<std::string, std::vector<int> > &ports)
 {
     size_t pos = value.find(':');
-
     if (pos != std::string::npos) // case = listen 127.0.0.1:9090;
     {
         std::string ip       = value.substr(0, pos);
@@ -135,15 +136,16 @@ void Interpreter::handleport(const std::string &value, std::map<std::string, int
             throw std::runtime_error("Port must be a number");
         if (num < 1 || num > 65535)
             throw std::runtime_error("Invalid port number: " + port_str);
-        ports[ip] = static_cast<int>(num);
+        ports[ip].push_back(static_cast<int>(num));
     }
     else // case = listen 127.0.0.1;
     {
         if (value.find('.') != std::string::npos)
         {
-            ports[value] = 80; // default port for IP addresses
+            ports[value].push_back(80);
+            ; // default port for IP addresses
         }
-        else                   //   case = listen 8080;
+        else  //   case = listen 8080;
         {
             char *rest;
             if (value.find('.') != std::string::npos)
@@ -153,7 +155,7 @@ void Interpreter::handleport(const std::string &value, std::map<std::string, int
                 throw std::runtime_error("Port must be a number");
             if (num < 1 || num > 65535)
                 throw std::runtime_error("Invalid port number: " + value);
-            ports["0.0.0.0"] = static_cast<int>(num); // default IP for port-only listen directives
+            ports["0.0.0.0"].push_back(static_cast<int>(num)); // default IP for port-only listen directives
         }
     }
 }
@@ -202,7 +204,7 @@ size_t Interpreter::handlemaxbodysize(const std::vector<std::string> &values)
 s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server,
                                        const std::string &path)
 {
-    s_Location location;
+    s_Location location = s_Location();
 
     location.path          = path;
     location.root          = server.root;
@@ -247,7 +249,7 @@ s_Location Interpreter::handleLocation(const std::vector<Directive> &DirectiveCh
         }
         else if (DirectiveChildren[i].get_key() == "cgi_ext")
         {
-            location.CGIhandlers = handleCGI(DirectiveChildren[i].get_values());
+            handleCGI(DirectiveChildren[i].get_values(), location.CGIhandlers);
         }
         else if (DirectiveChildren[i].get_key() == "max_body_size")
         {
@@ -319,11 +321,9 @@ int Interpreter::handleRedirectCode(const std::string &code)
  * @param cgi_values A vector of strings representing the CGI directive values.
  * @return A map containing the CGI extensions and their corresponding handler paths.
  */
-std::map<std::string, std::string> Interpreter::handleCGI(const std::vector<std::string> &cgi_values)
+void Interpreter::handleCGI(const std::vector<std::string> &cgi_values, std::map<std::string, std::string> &cgihandler)
 {
     if (cgi_values.size() != 2)
         throw std::runtime_error("CGI directive must have exactly two values: extension and handler path");
-    std::map<std::string, std::string> cgi_handler;
-    cgi_handler[cgi_values[0]] = cgi_values[1];
-    return cgi_handler;
+    cgihandler[cgi_values[0]] = cgi_values[1];
 }
