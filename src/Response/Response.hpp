@@ -40,6 +40,7 @@ class Response
     Request m_request;
     std::string m_response_buffer;
     std::string m_body_content;
+    size_t m_content_length;
 
     void   init_response();
     void   handle_error(int fd);
@@ -47,7 +48,8 @@ class Response
     std::string getStatusMessage(int code);
     void    chunks_handler();
     std::string toHex(size_t size);
-
+    void    handleErrors();
+  
 
 
 };

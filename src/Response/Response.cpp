@@ -11,7 +11,8 @@ Response::Response(const Request &request) :
     m_state(RESPONSE_INIT),
     m_buffer_offset(0),
     m_status_code(200), 
-    m_request(request)
+    m_request(request),
+    m_content_length(0)
 
 {
 }
@@ -23,13 +24,22 @@ Response::~Response(void)
 /**
  * validate the request and prepare the response
  */
+void    Response::handleErrors()
+{
+    m_status_code = m_request.getErrorCode();
+    m_state = RESPONSE_SEND_HEADERS;
+    std::stringstream ss;
+    ss << "<h1>" << m_status_code << getStatusMessage(m_status_code) << "</h1>";
+    m_body_content = ss.str();
+}
+
 
 void   Response::init_response()
 {
     if(m_request.getState() != Request::COMPLETE)
     {
-        m_status_code = m_request.getErrorCode();
-        m_state = RESPONSE_SEND_HEADERS;
+
+        return;
     }
     std::string file = "index.html"; // index.html to be replaced by the actual path provided by the router
     std::string method = m_request.getMethod();
@@ -59,7 +69,7 @@ void   Response::init_response()
             }
         }
     }
-    if(method == "DELETE")
+    else if(method == "DELETE")
     {
         if(unlink(file.c_str()) == 0)
         {
@@ -77,13 +87,18 @@ void   Response::init_response()
         std::ofstream outfile(file.c_str(), std::ios::binary);
         if(!outfile)
             m_status_code = INTERNAL_SERVER_ERROR;
-        std::vector<char> vec_body = m_request.getBody();
-        outfile.write(&vec_body[0], static_cast<std::streamsize>(vec_body.size()));
-        outfile.close();
-        m_status_code = 201;
-        m_body_content = "<html><body><h1>File Uploaded Successfully</h1></body></html>";
+        else
+        {
+            std::vector<char> vec_body = m_request.getBody();
+            if(!vec_body.empty())
+                outfile.write(&vec_body[0], static_cast<std::streamsize>(vec_body.size()));
+            outfile.close();
+            m_status_code = 201;
+            m_body_content = "<html><body><h1>File Uploaded Successfully</h1></body></html>";
+        }
     }
-
+    if(!m_body_content.empty())
+        m_content_length = m_body_content.size();
     m_state = RESPONSE_SEND_HEADERS;
 }
 
