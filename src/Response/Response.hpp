@@ -48,7 +48,7 @@ class Response
     std::string getStatusMessage(int code);
     void    chunks_handler();
     std::string toHex(size_t size);
-    void    handleErrors();
+    void    generateErrorBody();
   
 
 

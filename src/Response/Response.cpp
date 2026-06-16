@@ -21,24 +21,24 @@ Response::~Response(void)
 {
 }
 
-/**
- * validate the request and prepare the response
- */
-void    Response::handleErrors()
+
+void    Response::generateErrorBody()
 {
-    m_status_code = m_request.getErrorCode();
-    m_state = RESPONSE_SEND_HEADERS;
     std::stringstream ss;
     ss << "<h1>" << m_status_code << getStatusMessage(m_status_code) << "</h1>";
     m_body_content = ss.str();
+    m_state = RESPONSE_SEND_HEADERS;
 }
 
-
+/**
+ * validate the request and prepare the response
+ */
 void   Response::init_response()
 {
     if(m_request.getState() != Request::COMPLETE)
     {
-
+        m_status_code = m_request.getErrorCode();
+        generateErrorBody();
         return;
     }
     std::string file = "index.html"; // index.html to be replaced by the actual path provided by the router
@@ -53,12 +53,19 @@ void   Response::init_response()
                 m_status_code = NOT_FOUND;
             else if(errno == EACCES)
                 m_status_code = FORBIDDEN;
+            else m_status_code = INTERNAL_SERVER_ERROR;
+            
+            generateErrorBody();
+            return;
         }
         else 
         {
             m_file_input.open(file.c_str(), std::ios::binary);
             if(!m_file_input)
+            {
                 m_status_code = INTERNAL_SERVER_ERROR;
+                generateErrorBody();
+            }
             else
             {
                 std::stringstream ss;
@@ -76,17 +83,24 @@ void   Response::init_response()
             m_status_code = 204;
             m_body_content = "";
         }
-        else {
+        else 
+        {
             if(errno == EACCES) m_status_code = FORBIDDEN;
             else if(errno == ENOENT) m_status_code = NOT_FOUND;
             else m_status_code = INTERNAL_SERVER_ERROR;
+            generateErrorBody();
+            return;
         }
     }
     else if(method == "POST")
     {
         std::ofstream outfile(file.c_str(), std::ios::binary);
         if(!outfile)
+        {
             m_status_code = INTERNAL_SERVER_ERROR;
+            generateErrorBody();
+            return;
+        }
         else
         {
             std::vector<char> vec_body = m_request.getBody();
