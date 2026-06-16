@@ -30,6 +30,76 @@ void    Response::generateErrorBody()
     m_state = RESPONSE_SEND_HEADERS;
 }
 
+void    Response::init_GET(const std::string &file_path)
+{
+    struct stat bff = {};
+    if (stat(file_path.c_str(), &bff) != 0) 
+    {
+        if(errno == ENOENT)
+            m_status_code = NOT_FOUND;
+        else if(errno == EACCES)
+            m_status_code = FORBIDDEN;
+        else m_status_code = INTERNAL_SERVER_ERROR;
+        
+        generateErrorBody();
+        return;
+    }
+    else 
+    {
+        m_file_input.open(file_path.c_str(), std::ios::binary);
+        if(!m_file_input)
+        {
+            m_status_code = INTERNAL_SERVER_ERROR;
+            generateErrorBody();
+        }
+        else
+        {
+            std::stringstream ss;
+            ss << m_file_input.rdbuf();
+            m_body_content = ss.str();
+            m_file_input.close();
+            m_status_code = 200;
+        }
+    }
+}
+
+
+void    Response::init_DELETE(const std::string &file_path)
+{
+    if(unlink(file_path.c_str()) == 0)
+    {
+        m_status_code = 204;
+        m_body_content = "";
+    }
+    else 
+    {
+        if(errno == EACCES) m_status_code = FORBIDDEN;
+        else if(errno == ENOENT) m_status_code = NOT_FOUND;
+        else m_status_code = INTERNAL_SERVER_ERROR;
+        generateErrorBody();
+        return;
+    }
+}
+
+void    Response::init_POST(const std::string &file_path)
+{
+    std::ofstream outfile(file_path.c_str(), std::ios::binary);
+    if(!outfile)
+    {
+        m_status_code = INTERNAL_SERVER_ERROR;
+        generateErrorBody();
+        return;
+    }
+    else
+    {
+        std::vector<char> vec_body = m_request.getBody();
+        if(!vec_body.empty())
+            outfile.write(&vec_body[0], static_cast<std::streamsize>(vec_body.size()));
+        outfile.close();
+        m_status_code = 201;
+        m_body_content = "<html><body><h1>File Uploaded Successfully</h1></body></html>";
+    }
+}
 /**
  * validate the request and prepare the response
  */
@@ -46,70 +116,15 @@ void   Response::init_response()
     
     if(method == "GET")
     {
-        struct stat bff = {};
-        if (stat(file.c_str(), &bff) != 0) 
-        {
-            if(errno == ENOENT)
-                m_status_code = NOT_FOUND;
-            else if(errno == EACCES)
-                m_status_code = FORBIDDEN;
-            else m_status_code = INTERNAL_SERVER_ERROR;
-            
-            generateErrorBody();
-            return;
-        }
-        else 
-        {
-            m_file_input.open(file.c_str(), std::ios::binary);
-            if(!m_file_input)
-            {
-                m_status_code = INTERNAL_SERVER_ERROR;
-                generateErrorBody();
-            }
-            else
-            {
-                std::stringstream ss;
-                ss << m_file_input.rdbuf();
-                m_body_content = ss.str();
-                m_file_input.close();
-                m_status_code = 200;
-            }
-        }
+       init_GET(file);
     }
     else if(method == "DELETE")
     {
-        if(unlink(file.c_str()) == 0)
-        {
-            m_status_code = 204;
-            m_body_content = "";
-        }
-        else 
-        {
-            if(errno == EACCES) m_status_code = FORBIDDEN;
-            else if(errno == ENOENT) m_status_code = NOT_FOUND;
-            else m_status_code = INTERNAL_SERVER_ERROR;
-            generateErrorBody();
-            return;
-        }
+       init_DELETE(file);
     }
     else if(method == "POST")
     {
-        std::ofstream outfile(file.c_str(), std::ios::binary);
-        if(!outfile)
-        {
-            m_status_code = INTERNAL_SERVER_ERROR;
-            generateErrorBody();
-            return;
-        }
-        else
-        {
-            std::vector<char> vec_body = m_request.getBody();
-            if(!vec_body.empty())
-                outfile.write(&vec_body[0], static_cast<std::streamsize>(vec_body.size()));
-            outfile.close();
-            m_status_code = 201;
-            m_body_content = "<html><body><h1>File Uploaded Successfully</h1></body></html>";
-        }
+        init_POST(file);
     }
     if(!m_body_content.empty())
         m_content_length = m_body_content.size();
@@ -135,6 +150,26 @@ std::string Response::getStatusMessage(int code)
     }
 }
 
+std::string get_content_type(const std::string &filepath)
+{
+    size_t dot_pos = filepath.find_last_of('.');
+    if(dot_pos == std::string::npos)
+    {
+        return "application/octet-stream";
+    }
+
+    std::string ext = filepath.substr(dot_pos + 1);
+    if (ext == "html" || ext == "htm") return "text/html";
+    if (ext == "css")                  return "text/css";
+    if (ext == "js")                   return "application/javascript";
+    if (ext == "png")                  return "image/png";
+    if (ext == "jpg" || ext == "jpeg") return "image/jpeg";
+    if (ext == "gif")                  return "image/gif";
+    if (ext == "json")                 return "application/json";
+    if (ext == "txt")                  return "text/plain";
+    return "application/octet-stream";
+}
+
 /**
  * header handler
  * @fd: socket fd
@@ -142,23 +177,29 @@ std::string Response::getStatusMessage(int code)
 void   Response::header_handler()
 {
     std::stringstream ss;
+    std::string filepath = "index.html/";
     ss << "HTTP/1.0 " << m_status_code << " " << getStatusMessage(m_status_code) << CRLF;
-    ss << "Server: webserv/1.0" << CRLF;
-    ss << "Content-Type: text/html" << CRLF;
-    ss << "Transfer-Encoding: chunked" << CRLF;
+    // ss << "Server: webserv/1.0" << CRLF;
+    if(m_status_code != 204)
+    {
+        if(m_status_code == 200)
+            ss << "Content-Type: " << get_content_type(filepath)<< CRLF;
+        ss << "Content-Type: text/html" << CRLF;
+        ss << "Content-Length: " << m_content_length << CRLF;
+    }
     ss << CRLF;
 
-    m_response_buffer = ss.str();
-    m_state = RESPONSE_SEND_CHUNKS;
+    m_response_buffer = ss.str() + m_body_content;
+    m_state = RESPONSE_COMPLETE;
 }
 
-std::string Response::toHex(size_t size)
-{
-    std::stringstream ss;
+// std::string Response::toHex(size_t size)
+// {
+//     std::stringstream ss;
 
-    ss << std::hex << size;
-    return ss.str();
-}
+//     ss << std::hex << size;
+//     return ss.str();
+// }
 
 void    Response::chunks_handler()
 {

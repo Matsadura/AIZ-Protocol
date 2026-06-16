@@ -49,6 +49,9 @@ class Response
     void    chunks_handler();
     std::string toHex(size_t size);
     void    generateErrorBody();
+    void    init_GET(const std::string &file_path);
+    void    init_DELETE(const std::string &file_path);
+    void    init_POST(const std::string &file_path);
   
 
 
