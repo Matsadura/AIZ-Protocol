@@ -54,13 +54,16 @@ s_Server Interpreter::parseServer(const Directive &directive)
     std::vector<Directive> DirectiveChildren;
 
     DirectiveChildren = directive.get_children();
+    int portCount = 0;
     for (size_t i = 0; i < DirectiveChildren.size(); i++)
     {
         if (DirectiveChildren[i].get_key() == "listen")
         {
+            if (portCount == 1)
+                throw std::runtime_error("Multiple ports are not supported");
+            portCount = 1;
             if (DirectiveChildren[i].get_values().empty() || DirectiveChildren[i].get_values().size() > 1)
                 throw std::runtime_error("Listen directive must have exactly one value");
-
             handleport(DirectiveChildren[i].get_values()[0], srv.ports);
         }
         else if (DirectiveChildren[i].get_key() == "server_name")
@@ -143,7 +146,7 @@ void Interpreter::handleport(const std::string &value, std::map<std::string, std
         if (value.find('.') != std::string::npos)
         {
             ports[value].push_back(80);
-            ; // default port for IP addresses
+             // default port for IP addresses
         }
         else  //   case = listen 8080;
         {
@@ -311,7 +314,7 @@ int Interpreter::handleRedirectCode(const std::string &code)
     double num = strtod(code.c_str(), &rest);
     if (*rest != '\0')
         throw std::runtime_error("Redirect code must be a number");
-    if (num < 300 || num > 399)
+    if (num != 301 && num != 302 && num != 303 && num != 307 && num != 308)
         throw std::runtime_error("Invalid redirect code: " + code);
     return static_cast<int>(num);
 }
