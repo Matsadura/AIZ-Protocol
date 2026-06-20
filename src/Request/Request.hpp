@@ -93,7 +93,7 @@ class Request
     void parseRequestLine(void);
     void parseHeaders(void);
     void parseBody(void);
-    void parseUnchunkedBody(void);
+    bool parseUnchunkedBody(void);
     void parseChunkedBody(void);
 
     /* Helper functions for request line parsing and validation */
