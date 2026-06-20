@@ -370,6 +370,28 @@ void Request::parseChunkedBody(void)
 }
 
 /**
+ * Parse the body of the HTTP request when Transfer-Encoding is not set to chunked.
+ */
+void Request::parseUnchunkedBody()
+{
+    size_t body_bytes_needed = m_content_length - m_body.size();
+    size_t bytes_to_append   = std::min(body_bytes_needed, m_raw_buffer.size());
+    if (!validateBodySize(bytes_to_append))
+        return;
+
+    if (m_raw_buffer.size() < body_bytes_needed)
+    {
+        m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.end());
+        m_raw_buffer.clear();
+        return;
+    }
+
+    m_body.insert(m_body.end(), m_raw_buffer.begin(),
+                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(body_bytes_needed));
+    m_raw_buffer.erase(0, body_bytes_needed);
+}
+
+/**
  * Parse the body of the HTTP request, handling both chunked and non-chunked bodies.
  */
 void Request::parseBody(void)
@@ -386,20 +408,6 @@ void Request::parseBody(void)
         return;
     }
 
-    size_t body_bytes_needed = m_content_length - m_body.size();
-    size_t bytes_to_append   = std::min(body_bytes_needed, m_raw_buffer.size());
-    if (!validateBodySize(bytes_to_append))
-        return;
-
-    if (m_raw_buffer.size() < body_bytes_needed)
-    {
-        m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.end());
-        m_raw_buffer.clear();
-        return;
-    }
-
-    m_body.insert(m_body.end(), m_raw_buffer.begin(),
-                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(body_bytes_needed));
-    m_raw_buffer.erase(0, body_bytes_needed);
+    parseUnchunkedBody();
     m_state = COMPLETE;
 }
