@@ -43,7 +43,7 @@ int main()
     */
 
     {
-        Request req;
+        Request     req;
         std::string payload = "POST /upload HTTP/1.1\r\n"
                               "Host: localhost\r\n"
                               "Transfer-Encoding: chunked\r\n"
@@ -58,7 +58,7 @@ int main()
     }
 
     {
-        Request req;
+        Request     req;
         std::string payload = "POST / HTTP/1.1\r\n"
                               "Host: localhost\r\n"
                               "Transfer-Encoding: chunked\r\n"
@@ -77,7 +77,7 @@ int main()
     */
 
     {
-        Request req;
+        Request     req;
         std::string part1 = "POST /upload HTTP/1.1\r\n"
                             "Host: localhost\r\n"
                             "Transfer-Encoding: chunked\r\n"
@@ -94,7 +94,7 @@ int main()
     }
 
     {
-        Request req;
+        Request     req;
         std::string part1 = "POST /upload HTTP/1.1\r\n"
                             "Host: localhost\r\n"
                             "Transfer-Encoding: chunked\r\n"
@@ -116,7 +116,7 @@ int main()
     */
 
     {
-        Request req;
+        Request     req;
         std::string payload = "POST /upload HTTP/1.1\r\n"
                               "Host: localhost\r\n"
                               "Transfer-Encoding: chunked\r\n"
@@ -131,7 +131,7 @@ int main()
     }
 
     {
-        Request req;
+        Request     req;
         std::string part1 = "POST /upload HTTP/1.1\r\n"
                             "Host: localhost\r\n"
                             "Transfer-Encoding: chunked\r\n"
@@ -140,12 +140,12 @@ int main()
                             "HELLO\r\n"
                             "0\r\n"
                             "X-Trailer-1: Value1\r\n"
-                            "X-Trailer-2: Value2\r\n"; 
+                            "X-Trailer-2: Value2\r\n";
 
         req.appendDataAndParse(part1.c_str(), part1.size());
         printResult("Chunked body inside trailer", req, Request::BODY, 0); // Wait for \r\n
 
-        std::string part2 = "\r\n"; // Final empty line ends the request
+        std::string part2 = "\r\n";                                        // Final empty line ends the request
         req.appendDataAndParse(part2.c_str(), part2.size());
         printResult("Chunked body trailer finished", req, Request::COMPLETE, 0);
     }
@@ -157,7 +157,7 @@ int main()
     */
 
     {
-        Request req;
+        Request     req;
         std::string payload = "POST /upload HTTP/1.1\r\n"
                               "Host: localhost\r\n"
                               "Transfer-Encoding: chunked\r\n"
@@ -170,7 +170,7 @@ int main()
     }
 
     {
-        Request req;
+        Request     req;
         std::string payload = "POST /upload HTTP/1.1\r\n"
                               "Host: localhost\r\n"
                               "Transfer-Encoding: chunked\r\n"
@@ -185,7 +185,7 @@ int main()
     }
 
     {
-        Request req;
+        Request     req;
         std::string payload = "POST /upload HTTP/1.1\r\n"
                               "Host: localhost\r\n"
                               "Transfer-Encoding: chunked\r\n"
@@ -233,7 +233,7 @@ int main()
     */
 
     {
-        Request req;
+        Request     req;
         std::string payload = "POST /upload HTTP/1.1\r\n"
                               "Host: localhost\r\n"
                               "Transfer-Encoding: chunked\r\n"
@@ -248,7 +248,7 @@ int main()
 
         req.appendDataAndParse(payload.c_str(), payload.size());
         printResult("Multiple chunks + extra pipeline data", req, Request::COMPLETE, 0);
-        
+
         // At this point, req.m_raw_buffer should contain "EXTRA_PIPELINED_REQUEST_DATA"
     }
 

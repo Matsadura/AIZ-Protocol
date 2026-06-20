@@ -11,7 +11,7 @@
 std::vector<std::string> split(const std::string &str, char delimiter)
 {
     std::vector<std::string> tokens;
-    std::string token;
+    std::string              token;
     for (std::string::const_iterator it = str.begin(); it != str.end(); ++it)
     {
         char ch = *it;

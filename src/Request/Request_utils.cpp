@@ -530,7 +530,7 @@ bool Request::parseChunkSize(void)
         return false;
 
     std::string size_line = m_raw_buffer.substr(0, crlf_pos);
-    size_t semi_pos       = size_line.find(';');
+    size_t      semi_pos  = size_line.find(';');
     std::string size_str  = (semi_pos == std::string::npos) ? size_line : size_line.substr(0, semi_pos);
 
     if (!validateChunkSizeFormat(size_str))
