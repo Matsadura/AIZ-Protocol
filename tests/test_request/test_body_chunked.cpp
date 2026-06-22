@@ -252,5 +252,21 @@ int main()
         // At this point, req.m_raw_buffer should contain "EXTRA_PIPELINED_REQUEST_DATA"
     }
 
+    {
+        Request     req;
+        std::string part1 = "POST /upload HTTP/1.1\r\n"
+                            "Host: localhost\r\n"
+                            "Transfer-Encoding: chunked\r\n"
+                            "\r\n"
+                            "5\r\n"
+                            "HELLO\r\n"
+                            "0\r\n"
+                            "Bad!!!!!!!!!\r\n"
+                            "X-Trailer-2: Value2\r\n";
+
+        req.appendDataAndParse(part1.c_str(), part1.size());
+        printResult("Chunked body inside trailer", req, Request::ERROR, BAD_REQUEST); // Wait for \r\n
+    }
+
     return 0;
 }

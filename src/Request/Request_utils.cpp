@@ -578,18 +578,49 @@ bool Request::parseChunkDataCRLF(void)
     return true;
 }
 
-bool Request::parseChunkTrailer(void)
+bool Request::parseChunkTrailer()
 {
-    size_t crlf_pos = m_raw_buffer.find("\r\n");
-    if (crlf_pos == std::string::npos)
-        return false;
-
-    if (crlf_pos == 0)
+    while (true)
     {
-        m_raw_buffer.erase(0, 2);
-        m_state = COMPLETE;
-        return true;
+        size_t pos = m_raw_buffer.find(CRLF);
+
+        if (pos == std::string::npos)
+            return false;
+
+        std::string line = m_raw_buffer.substr(0, pos);
+
+        m_raw_buffer.erase(0, pos + 2);
+
+        if (line.empty())
+        {
+            m_state = COMPLETE;
+            return true;
+        }
+
+        size_t colon_pos = line.find(':');
+
+        if (colon_pos == std::string::npos)
+        {
+            setError(BAD_REQUEST);
+            return false;
+        }
+
+        std::string key   = line.substr(0, colon_pos);
+        std::string value = line.substr(colon_pos + 1);
+
+        if (!validateHeaderKeyFormat(key))
+            return false;
+
+        key   = toLower(key);
+        value = trim(value);
+
+        if (!validateHeaderKeyNotEmpty(key))
+            return false;
+
+        if (!validateHeaderNameCharacters(key))
+            return false;
+
+        if (!validateHeaderValue(value))
+            return false;
     }
-    m_raw_buffer.erase(0, crlf_pos + 2);
-    return true;
 }
