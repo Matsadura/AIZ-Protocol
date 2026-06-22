@@ -15,3 +15,8 @@ IndentCaseLabels: true
 AlignConsecutiveAssignments: Consecutive
 AlwaysBreakTemplateDeclarations: Yes
 Standard: c++03
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignFunctionPointers: true

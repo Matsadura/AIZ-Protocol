@@ -1,4 +1,5 @@
 #include "Request.hpp"
+#include <cerrno>
 #include <cstddef>
 #include <cstdlib>
 #include <vector>
@@ -13,8 +14,7 @@ Request::Request(void) :
     m_is_chunked(false),
     m_content_length(0),
     m_chunk_state(CHUNK_SIZE),
-    m_current_chunk_size(0),
-    m_chunk_bytes_read(0)
+    m_chunk_bytes_remaining(0)
 {
 }
 
@@ -37,8 +37,7 @@ Request::Request(const Request &other) :
     m_is_chunked(other.m_is_chunked),
     m_content_length(other.m_content_length),
     m_chunk_state(other.m_chunk_state),
-    m_current_chunk_size(other.m_current_chunk_size),
-    m_chunk_bytes_read(other.m_chunk_bytes_read)
+    m_chunk_bytes_remaining(other.m_chunk_bytes_remaining)
 {
 }
 
@@ -51,22 +50,21 @@ Request &Request::operator=(const Request &other)
 {
     if (this != &other)
     {
-        m_state              = other.m_state;
-        m_raw_buffer         = other.m_raw_buffer;
-        m_error_code         = other.m_error_code;
-        m_max_body_size      = other.m_max_body_size;
-        m_method             = other.m_method;
-        m_uri                = other.m_uri;
-        m_path               = other.m_path;
-        m_query              = other.m_query;
-        m_version            = other.m_version;
-        m_headers            = other.m_headers;
-        m_body               = other.m_body;
-        m_is_chunked         = other.m_is_chunked;
-        m_content_length     = other.m_content_length;
-        m_chunk_state        = other.m_chunk_state;
-        m_current_chunk_size = other.m_current_chunk_size;
-        m_chunk_bytes_read   = other.m_chunk_bytes_read;
+        m_state                 = other.m_state;
+        m_raw_buffer            = other.m_raw_buffer;
+        m_error_code            = other.m_error_code;
+        m_max_body_size         = other.m_max_body_size;
+        m_method                = other.m_method;
+        m_uri                   = other.m_uri;
+        m_path                  = other.m_path;
+        m_query                 = other.m_query;
+        m_version               = other.m_version;
+        m_headers               = other.m_headers;
+        m_body                  = other.m_body;
+        m_is_chunked            = other.m_is_chunked;
+        m_content_length        = other.m_content_length;
+        m_chunk_state           = other.m_chunk_state;
+        m_chunk_bytes_remaining = other.m_chunk_bytes_remaining;
     }
     return *this;
 }
@@ -220,11 +218,10 @@ void Request::reset(int reset_type)
     m_version.clear();
     m_headers.clear();
     m_body.clear();
-    m_is_chunked         = false;
-    m_content_length     = 0;
-    m_chunk_state        = CHUNK_SIZE;
-    m_current_chunk_size = 0;
-    m_chunk_bytes_read   = 0;
+    m_is_chunked            = false;
+    m_content_length        = 0;
+    m_chunk_state           = CHUNK_SIZE;
+    m_chunk_bytes_remaining = 0;
 }
 
 /**
@@ -344,6 +341,58 @@ void Request::parseHeaders(void)
 }
 
 /**
+ * Parse the body of the HTTP request when Transfer-Encoding is set to chunked.
+ */
+void Request::parseChunkedBody(void)
+{
+    while (!m_raw_buffer.empty() && m_state != COMPLETE)
+    {
+        switch (m_chunk_state)
+        {
+            case CHUNK_SIZE:
+                if (!parseChunkSize())
+                    return;
+                break;
+            case CHUNK_DATA:
+                if (!parseChunkData())
+                    return;
+                break;
+            case CHUNK_DATA_CRLF:
+                if (!parseChunkDataCRLF())
+                    return;
+                break;
+            case CHUNK_TRAILER:
+                if (!parseChunkTrailer())
+                    return;
+                break;
+        }
+    }
+}
+
+/**
+ * Parse the body of the HTTP request when Transfer-Encoding is not set to chunked.
+ */
+bool Request::parseUnchunkedBody()
+{
+    size_t body_bytes_needed = m_content_length - m_body.size();
+    size_t bytes_to_append   = std::min(body_bytes_needed, m_raw_buffer.size());
+    if (!validateBodySize(bytes_to_append))
+        return false;
+
+    if (m_raw_buffer.size() < body_bytes_needed)
+    {
+        m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.end());
+        m_raw_buffer.clear();
+        return false;
+    }
+
+    m_body.insert(m_body.end(), m_raw_buffer.begin(),
+                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(body_bytes_needed));
+    m_raw_buffer.erase(0, body_bytes_needed);
+    return (true);
+}
+
+/**
  * Parse the body of the HTTP request, handling both chunked and non-chunked bodies.
  */
 void Request::parseBody(void)
@@ -356,24 +405,11 @@ void Request::parseBody(void)
 
     if (m_is_chunked)
     {
-        // parseChunkedBody();
+        parseChunkedBody();
         return;
     }
 
-    size_t body_bytes_needed = m_content_length - m_body.size();
-    size_t bytes_to_append   = std::min(body_bytes_needed, m_raw_buffer.size());
-    if (!validateBodySize(bytes_to_append))
+    if (!parseUnchunkedBody())
         return;
-
-    if (m_raw_buffer.size() < body_bytes_needed)
-    {
-        m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.end());
-        m_raw_buffer.clear();
-        return;
-    }
-
-    m_body.insert(m_body.end(), m_raw_buffer.begin(),
-                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(body_bytes_needed));
-    m_raw_buffer.erase(0, body_bytes_needed);
     m_state = COMPLETE;
 }

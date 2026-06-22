@@ -1,4 +1,5 @@
 #include "Request.hpp"
+#include <cerrno>
 
 /**
  * Extract the path and query components from the URI.
@@ -501,4 +502,125 @@ bool Request::validateBodySize(size_t new_data_size)
     }
 
     return true;
+}
+
+bool Request::validateChunkSizeFormat(const std::string &line)
+{
+    if (line.empty() || line.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos)
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+
+    char *endptr = NULL;
+    errno        = 0;
+    std::strtoul(line.c_str(), &endptr, 16);
+    if (*endptr != '\0' || errno == ERANGE)
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+    return true;
+}
+
+bool Request::parseChunkSize(void)
+{
+    size_t crlf_pos = m_raw_buffer.find("\r\n");
+    if (crlf_pos == std::string::npos)
+        return false;
+
+    std::string size_line = m_raw_buffer.substr(0, crlf_pos);
+    size_t      semi_pos  = size_line.find(';');
+    std::string size_str  = (semi_pos == std::string::npos) ? size_line : size_line.substr(0, semi_pos);
+
+    if (!validateChunkSizeFormat(size_str))
+        return false;
+
+    m_chunk_bytes_remaining = std::strtoul(size_str.c_str(), NULL, 16);
+    m_raw_buffer.erase(0, crlf_pos + 2);
+    m_chunk_state = (m_chunk_bytes_remaining == 0) ? CHUNK_TRAILER : CHUNK_DATA;
+    return true;
+}
+
+bool Request::parseChunkData(void)
+{
+    if (m_raw_buffer.empty())
+        return false;
+
+    size_t bytes_to_append = std::min(m_chunk_bytes_remaining, m_raw_buffer.size());
+
+    if (!validateBodySize(bytes_to_append))
+        return false;
+
+    m_body.insert(m_body.end(), m_raw_buffer.begin(),
+                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_to_append));
+    m_raw_buffer.erase(0, bytes_to_append);
+    m_chunk_bytes_remaining -= bytes_to_append;
+
+    if (m_chunk_bytes_remaining == 0)
+        m_chunk_state = CHUNK_DATA_CRLF;
+    return true;
+}
+
+bool Request::parseChunkDataCRLF(void)
+{
+    if (m_raw_buffer.size() < 2)
+        return false;
+
+    if (m_raw_buffer[0] != '\r' || m_raw_buffer[1] != '\n')
+    {
+        setError(BAD_REQUEST);
+        return false;
+    }
+
+    m_raw_buffer.erase(0, 2);
+    m_chunk_state = CHUNK_SIZE;
+    return true;
+}
+
+bool Request::parseChunkTrailer()
+{
+    while (true)
+    {
+        size_t pos = m_raw_buffer.find(CRLF);
+
+        if (pos == std::string::npos)
+            return false;
+
+        std::string line = m_raw_buffer.substr(0, pos);
+
+        m_raw_buffer.erase(0, pos + 2);
+
+        if (line.empty())
+        {
+            m_state = COMPLETE;
+            return true;
+        }
+
+        size_t colon_pos = line.find(':');
+
+        if (colon_pos == std::string::npos)
+        {
+            setError(BAD_REQUEST);
+            return false;
+        }
+
+        std::string key   = line.substr(0, colon_pos);
+        std::string value = line.substr(colon_pos + 1);
+
+        if (!validateHeaderKeyFormat(key))
+            return false;
+
+        key   = toLower(key);
+        value = trim(value);
+
+        if (!validateHeaderKeyNotEmpty(key))
+            return false;
+
+        if (!validateHeaderNameCharacters(key))
+            return false;
+
+        if (!validateHeaderValue(value))
+            return false;
+    }
 }
