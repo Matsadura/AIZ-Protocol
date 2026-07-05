@@ -2,9 +2,12 @@
 #define CGI_HPP
 
 #include "../../src/Request/Request.hpp"
+#include "../../src/core/Common.h"
 #include <string>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
+#include <fcntl.h>
 
 class CGI
 {
@@ -18,6 +21,7 @@ class CGI
 
     void buildEnv(const Request &req);
     void buildArgv(const std::string &scriptPath);
+    void freeEnvArgv();
 
   public:
     CGI();

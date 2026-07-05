@@ -15,6 +15,17 @@ class Connections
         int                     sockfd;
         int                     config_id;
         Request                 req;
+
+        /* CGI related fields */
+
+        bool   is_cgi;
+        int    cgi_read_fd;
+        int    cgi_write_fd;
+        pid_t  cgi_pid;
+        time_t cgi_start_time;
+
+        size_t cgi_bytes_written;
+        std::vector<char> cgi_output_buffer;
     } connection_t;
 
   private:
