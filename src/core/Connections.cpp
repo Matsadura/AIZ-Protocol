@@ -105,6 +105,9 @@ void Connections::conn_handle_read(int sockfd, Multiplexer &server)
         LOG_INFO("REQUEST") << "[REQUEST] Parsing is completed (fd=" << sockfd << ")\n";
 
         std::string uri = conn.req.getURI();
+        size_t      query_pos = uri.find('?');
+        std::string path = (query_pos != std::string::npos) ? uri.substr(0, query_pos) : uri;
+        LOG_INFO("REQUEST") << "[REQUEST] Path: " << path << " (fd=" << sockfd << ")\n";
         /*wcript will be based on COnfig file later*/
         if (uri.find(".php") != std::string::npos || uri.find(".py") != std::string::npos)
         {
@@ -115,7 +118,7 @@ void Connections::conn_handle_read(int sockfd, Multiplexer &server)
 
             conn.cgi_ptr = new CGI();
 
-            std::string scriptPath = "." + uri; // Assuming the script is in the current directory
+            std::string scriptPath = "." + path; // Assuming the script is in the current directory
 
             conn.cgi_ptr->execute(conn.req, scriptPath);
 
