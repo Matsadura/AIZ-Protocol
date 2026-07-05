@@ -59,6 +59,8 @@ class Multiplexer
     void start_monitor_conn(int conn_fd);
     void stop_monitor_conn(int conn_fd);
     void switch_conn_interest(int conn_fd, uint32_t events);
+
+    void start_monitor_cgi(int conn_fd, int cgi_fd, FDRole role);
 };
 
 #endif

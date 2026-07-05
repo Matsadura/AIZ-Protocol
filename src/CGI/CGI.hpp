@@ -3,11 +3,11 @@
 
 #include "../../src/Request/Request.hpp"
 #include "../../src/core/Common.h"
+#include <fcntl.h>
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
-#include <fcntl.h>
 
 class CGI
 {
@@ -29,8 +29,9 @@ class CGI
 
     void execute(const Request &req, const std::string &scriptPath);
 
-    int getReadFd() const;
-    int getWriteFd() const;
+    int   getReadFd() const;
+    int   getWriteFd() const;
+    pid_t getPid() const;
 
     void waitAndClean();
 };

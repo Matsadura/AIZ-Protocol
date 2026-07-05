@@ -61,7 +61,7 @@ void Multiplexer::run()
         ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, -1);
         for (int j = 0; j < ready; j++)
         {
-            int fd      = unpack_conn_fd(m_evlist[j].data.u64);
+            int    fd   = unpack_conn_fd(m_evlist[j].data.u64);
             FDRole role = unpack_role(m_evlist[j].data.u64);
             log_event(m_evlist[j]);
             if (role == LISTENER)
@@ -149,4 +149,23 @@ void Multiplexer::log_event(struct epoll_event ev)
                       << ((ev.events & EPOLLOUT) ? "EPOLLOUT " : "") << ((ev.events & EPOLLHUP) ? "EPOLLHUP " : "")
                       << ((ev.events & EPOLLRDHUP) ? "EPOLLRDHUP " : "") << ((ev.events & EPOLLERR) ? "EPOLLERR " : "")
                       << "(fd=" << unpack_conn_fd(ev.data.u64) << ")\n";
+}
+
+void Multiplexer::start_monitor_cgi(int conn_fd, int cgi_fd, FDRole role)
+{
+    struct epoll_event ev = {};
+
+    if (role == CGI_STDIN)
+        ev.events = EPOLLOUT | EPOLLRDHUP;
+    else if (role == CGI_STDOUT)
+        ev.events = EPOLLIN | EPOLLRDHUP;
+    else
+        UNREACHABLE("start_monitor_cgi got unxpected role");
+
+    ev.data.u64 = pack_data(conn_fd, role);
+
+    LOG_INFO("EPOLL") << "Registered CGI pipe (fd=" << cgi_fd << ") for client (fd=" << conn_fd << ")\n";
+
+    if (epoll_ctl(m_epfd, EPOLL_CTL_ADD, cgi_fd, &ev) == -1)
+        abort("epoll_ctl ADD CGI PIPE");
 }

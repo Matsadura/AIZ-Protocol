@@ -23,6 +23,11 @@ int CGI::getWriteFd() const
     return m_pipe_in[1];
 }
 
+pid_t CGI::getPid() const
+{
+    return m_pid;
+}
+
 void CGI::freeEnvArgv()
 {
     for (size_t i = 0; i < m_envp.size(); ++i)

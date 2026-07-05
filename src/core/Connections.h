@@ -5,6 +5,7 @@
 #include "Common.h"
 class ListenerSocket;
 
+class CGI;
 class Multiplexer;
 
 class Connections
@@ -24,8 +25,10 @@ class Connections
         pid_t  cgi_pid;
         time_t cgi_start_time;
 
-        size_t cgi_bytes_written;
+        size_t            cgi_bytes_written;
         std::vector<char> cgi_output_buffer;
+
+        CGI *cgi_ptr;
     } connection_t;
 
   private:
