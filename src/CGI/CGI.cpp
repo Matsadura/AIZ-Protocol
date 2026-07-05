@@ -95,13 +95,13 @@ void CGI::buildEnv(const Request &req)
     env_vars["QUERY_STRING"]    = req.getQuery();
     env_vars["SERVER_PROTOCOL"] = req.getVersion();
 
-    if (req.getHeaders().count("Content-Length"))
+    if (req.getHeaders().count("content-length"))
     {
-        env_vars["CONTENT_LENGTH"] = req.getHeader("Content-Length");
+        env_vars["CONTENT_LENGTH"] = req.getHeader("content-length");
     }
-    if (req.getHeaders().count("Content-Type"))
+    if (req.getHeaders().count("content-type"))
     {
-        env_vars["CONTENT_TYPE"] = req.getHeader("Content-Type");
+        env_vars["CONTENT_TYPE"] = req.getHeader("content-type");
     }
 
     std::map<std::string, std::string>::iterator it;

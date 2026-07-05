@@ -238,3 +238,51 @@ Connections::~Connections()
         it++;
     }
 }
+
+
+/**
+ * MOCK IMPLEMENTATION FOR CGI TESTING ONLY (AI GENERATED)
+ * This blindly wraps the raw CGI output in a 200 OK header and sends it.
+ */
+void Connections::conn_handle_write(int sockfd, Multiplexer &server)
+{
+    connection_t &conn = find(sockfd);
+    
+    // Only attempt to write if we actually have CGI output ready
+    if (!conn.cgi_output_buffer.empty())
+    {
+        // 1. Build the raw HTTP response string
+        std::string response = "HTTP/1.1 200 OK\r\n";
+        
+        // Convert the vector buffer to a string
+        std::string cgi_raw(conn.cgi_output_buffer.begin(), conn.cgi_output_buffer.end());
+        response += cgi_raw;
+
+        // 2. Perform exactly ONE non-blocking send per EPOLLOUT event
+        ssize_t bytes_sent = send(sockfd, response.c_str(), response.size(), 0);
+        
+        if (bytes_sent > 0)
+        {
+            LOG_INFO("CONNECTIONS") << "Sent HTTP response to client (fd=" << sockfd << ")\n";
+        }
+        else if (bytes_sent == -1)
+        {
+            // Per the grading rules, NO errno checking here. Treat as fatal.
+            LOG_ERROR("CONNECTIONS") << "Fatal: Failed to send HTTP response (fd=" << sockfd << ")\n";
+            close_connection(sockfd, server);
+            return;
+        }
+
+        // 3. Teardown the mock transaction
+        conn.cgi_output_buffer.clear();
+        
+        // Force close the connection after sending to cleanly end the curl test
+        close_connection(sockfd, server);
+    }
+    else
+    {
+        // If the buffer was empty but EPOLLOUT triggered, something is out of sync.
+        // Close it to prevent an infinite loop.
+        close_connection(sockfd, server);
+    }
+}

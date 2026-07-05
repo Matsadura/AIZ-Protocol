@@ -51,6 +51,8 @@ class Connections
     void          conn_handle_cgi_write(int sockfd, Multiplexer &server);
     void          conn_finish_cgi(int sockfd, Multiplexer &server);
     connection_t &find(int sockfd);
+
+    void conn_handle_write(int sockfd, Multiplexer &server);
 };
 
 #endif

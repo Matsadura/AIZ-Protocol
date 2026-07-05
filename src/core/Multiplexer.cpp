@@ -55,8 +55,9 @@ inline uint64_t Multiplexer::pack_data(int conn_fd, FDRole role)
 void Multiplexer::run()
 {
     int ready;
-    int i = 10;
-    while (i-- > 0)
+    // int i = 10; fuck you Ali, this made me crazy for 2 hours, i was wondering why the server was not responding to curl requests, and it was because of this line, i was testing with curl -v http://localhost:8080/hello.php and it was not responding, and i was like what the fuck is going on, and then i saw this line and i was like ohhhhhh, so i removed it and now it works, thanks ali for making me waste 2 hours of my life
+    // while (i-- > 0)
+    while(true)
     {
         ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, -1);
         for (int j = 0; j < ready; j++)
@@ -79,7 +80,8 @@ void Multiplexer::run()
                 else if (m_evlist[j].events & EPOLLOUT)
                 {
                     // Handle write
-                    UNIMPLEMENTED("Handle epoll write event");
+                    // UNIMPLEMENTED("Handle epoll write event");
+                    m_conns.conn_handle_write(fd, *this); /* For testing purposes */
                 }
                 else if (m_evlist[j].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR))
                 {
