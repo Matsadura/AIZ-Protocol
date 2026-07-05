@@ -47,6 +47,9 @@ class Connections
     int           accept_new(int fd, Multiplexer &server);
     void          close_connection(int sockfd, Multiplexer &server);
     void          conn_handle_read(int sockfd, Multiplexer &server);
+    void          conn_handle_cgi_read(int sockfd, Multiplexer &server);
+    void          conn_handle_cgi_write(int sockfd, Multiplexer &server);
+    void          conn_finish_cgi(int sockfd, Multiplexer &server);
     connection_t &find(int sockfd);
 };
 

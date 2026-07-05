@@ -87,6 +87,32 @@ void Multiplexer::run()
                     m_conns.close_connection(fd, *this);
                 }
             }
+            else if (role == CGI_STDIN)
+            {
+                if (m_evlist[j].events & EPOLLOUT)
+                {
+                    m_conns.conn_handle_cgi_write(fd, *this);
+                }
+                else if (m_evlist[j].events & (EPOLLHUP | EPOLLERR))
+                {
+                    m_conns.close_connection(fd, *this);
+                }
+            }
+            else if (role == CGI_STDOUT)
+            {
+                if (m_evlist[j].events & EPOLLIN)
+                {
+                    m_conns.conn_handle_cgi_read(fd, *this);
+                }
+                else if (m_evlist[j].events & EPOLLHUP)
+                {
+                    m_conns.conn_finish_cgi(fd, *this);
+                }
+                else if (m_evlist[j].events & EPOLLERR)
+                {
+                    m_conns.close_connection(fd, *this);
+                }
+            }
         }
     }
 }

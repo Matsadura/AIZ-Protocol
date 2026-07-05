@@ -134,6 +134,91 @@ void Connections::conn_handle_read(int sockfd, Multiplexer &server)
     }
 }
 
+void Connections::conn_handle_cgi_write(int sockfd, Multiplexer &server)
+{
+    connection_t            &conn      = find(sockfd);
+    const std::vector<char> &body      = conn.req.getBody();
+    size_t                   remaining = body.size() - conn.cgi_bytes_written;
+
+    if (remaining > 0)
+    {
+        ssize_t n = write(conn.cgi_write_fd, &body[0] + conn.cgi_bytes_written, remaining);
+
+        if (n > 0)
+        {
+            conn.cgi_bytes_written += n;
+            LOG_INFO("CGI") << "Wrote " << n << " bytes to script (fd=" << sockfd << ")\n";
+        }
+        else if (n == -1)
+        {
+            LOG_ERROR("CGI") << "Failed to write to CGI stdin (fd=" << sockfd << ")\n";
+            close_connection(sockfd, server);
+            return;
+        }
+    }
+
+    if (conn.cgi_bytes_written >= body.size() && conn.cgi_write_fd != -1)
+    {
+        LOG_INFO("CGI") << "Finished writing to CGI stdin (fd=" << sockfd << ")\n";
+        server.stop_monitor_conn(conn.cgi_write_fd);
+        close(conn.cgi_write_fd);
+        conn.cgi_write_fd = -1;
+    }
+}
+
+void Connections::conn_handle_cgi_read(int sockfd, Multiplexer &server)
+{
+    connection_t &conn = find(sockfd);
+    char          buffer[4096];
+    ssize_t       n = read(conn.cgi_read_fd, buffer, sizeof(buffer));
+
+    if (n > 0)
+    {
+        conn.cgi_output_buffer.insert(conn.cgi_output_buffer.end(), buffer, buffer + n);
+        LOG_INFO("CGI") << "Read " << n << " bytes from CGI stdout (fd=" << sockfd << ")\n";
+    }
+    else if (n == 0)
+    {
+        conn_finish_cgi(sockfd, server);
+    }
+    else
+    {
+        LOG_ERROR("CGI") << "Failed to read from CGI stdout (fd=" << sockfd << ")\n";
+        close_connection(sockfd, server);
+        return;
+    }
+}
+
+void Connections::conn_finish_cgi(int sockfd, Multiplexer &server)
+{
+    connection_t &conn = find(sockfd);
+
+    if (!conn.is_cgi)
+    {
+        LOG_ERROR("CGI") << "Attempted to finish CGI on a non-CGI connection (fd=" << sockfd << ")\n";
+        return;
+    }
+
+    LOG_INFO("CGI") << "CGI script finished (fd=" << sockfd << ")\n";
+
+    if (conn.cgi_ptr != NULL)
+    {
+        if (conn.cgi_read_fd != -1)
+        {
+            server.stop_monitor_conn(conn.cgi_read_fd);
+            close(conn.cgi_read_fd);
+            conn.cgi_read_fd = -1;
+        }
+        conn.cgi_ptr->waitAndClean();
+        delete conn.cgi_ptr;
+        conn.cgi_ptr = NULL;
+    }
+
+    conn.is_cgi      = false;
+    conn.cgi_read_fd = -1;
+    server.switch_conn_interest(sockfd, EPOLLOUT);
+}
+
 Connections::~Connections()
 {
     std::map<int, connection_t>::iterator it = m_list.begin();
