@@ -12,13 +12,13 @@ class Connections
     typedef struct
     {
         struct sockaddr_storage addr;
-        int sockfd;
-        int config_id;
-        Request req;
+        int                     sockfd;
+        int                     config_id;
+        Request                 req;
     } connection_t;
 
   private:
-    std::vector<connection_t> m_list;
+    std::map<int, connection_t> m_list;
 
     /**
      * @note: this class is uncopyable
@@ -30,9 +30,9 @@ class Connections
     Connections();
     ~Connections();
 
-    int accept_new(int fd, Multiplexer &server);
-    void close_connection(int sockfd, Multiplexer &server);
-    void handle_read(int sockfd, Multiplexer &server);
+    int           accept_new(int fd, Multiplexer &server);
+    void          close_connection(int sockfd, Multiplexer &server);
+    void          conn_handle_read(int sockfd, Multiplexer &server);
     connection_t &find(int sockfd);
 };
 
