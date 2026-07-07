@@ -94,6 +94,7 @@ void CGI::buildEnv(const Request &req)
     env_vars["REQUEST_URI"]     = req.getURI();
     env_vars["QUERY_STRING"]    = req.getQuery();
     env_vars["SERVER_PROTOCOL"] = req.getVersion();
+    env_vars["SCRIPT_NAME"]     = req.getPath();
 
     if (req.getHeaders().count("content-length"))
     {
