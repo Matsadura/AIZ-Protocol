@@ -1,6 +1,6 @@
 #include "CGI.hpp"
 
-CGI::CGI() : m_pid(-1)
+CGI::CGI() : m_pipe_in(), m_pipe_out(), m_pid(-1), m_start_time(0)
 {
     m_pipe_in[0]  = -1;
     m_pipe_in[1]  = -1;
