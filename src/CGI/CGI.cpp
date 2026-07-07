@@ -8,34 +8,6 @@ CGI::CGI() : m_pid(-1)
     m_pipe_out[1] = -1;
 }
 
-CGI::CGI(const CGI &other) : m_pid(other.m_pid)
-{
-    m_pipe_in[0]  = other.m_pipe_in[0];
-    m_pipe_in[1]  = other.m_pipe_in[1];
-    m_pipe_out[0] = other.m_pipe_out[0];
-    m_pipe_out[1] = other.m_pipe_out[1];
-
-    m_envp = other.m_envp;
-    m_argv = other.m_argv;
-}
-
-CGI &CGI::operator=(const CGI &other)
-{
-    if (this != &other)
-    {
-        m_pid = other.m_pid;
-
-        m_pipe_in[0]  = other.m_pipe_in[0];
-        m_pipe_in[1]  = other.m_pipe_in[1];
-        m_pipe_out[0] = other.m_pipe_out[0];
-        m_pipe_out[1] = other.m_pipe_out[1];
-
-        m_envp = other.m_envp;
-        m_argv = other.m_argv;
-    }
-    return *this;
-}
-
 CGI::~CGI()
 {
     waitAndClean();
@@ -81,6 +53,8 @@ void CGI::execute(const Request &req, const std::string &scriptPath)
 
     buildEnv(req);
     buildArgv(scriptPath);
+
+    m_start_time = time(NULL);
 
     m_pid = fork();
     if (m_pid < 0)
@@ -197,4 +171,28 @@ void CGI::waitAndClean()
     }
 
     freeEnvArgv();
+}
+
+bool CGI::isRunning() const
+{
+    if (m_pid <= 0)
+        return false;
+
+    int   status;
+    pid_t result = waitpid(m_pid, &status, WNOHANG);
+    if (result == 0)
+        return true;
+    else
+        return false;
+}
+
+bool CGI::isTimeout(time_t start_time, int timeout) const
+{
+    time_t current_time = time(NULL);
+    return (current_time - start_time) > timeout;
+}
+
+time_t CGI::getStartTime() const
+{
+    return m_start_time;
 }

@@ -55,12 +55,10 @@ inline uint64_t Multiplexer::pack_data(int conn_fd, FDRole role)
 void Multiplexer::run()
 {
     int ready;
-    // int i = 10; fuck you Ali, this made me crazy for 2 hours, i was wondering why the server was not responding to curl requests, and it was because of this line, i was testing with curl -v http://localhost:8080/hello.php and it was not responding, and i was like what the fuck is going on, and then i saw this line and i was like ohhhhhh, so i removed it and now it works, thanks ali for making me waste 2 hours of my life
-    // while (i-- > 0)
-    while(true)
+    int i = 10;
+    while (i-- > 0)
     {
-        // ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, -1);
-        ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, 1000);
+        ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, -1);
         for (int j = 0; j < ready; j++)
         {
             int    fd   = unpack_conn_fd(m_evlist[j].data.u64);
@@ -81,8 +79,7 @@ void Multiplexer::run()
                 else if (m_evlist[j].events & EPOLLOUT)
                 {
                     // Handle write
-                    // UNIMPLEMENTED("Handle epoll write event");
-                    m_conns.conn_handle_write(fd, *this); /* For testing purposes */
+                    UNIMPLEMENTED("Handle epoll write event");
                 }
                 else if (m_evlist[j].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR))
                 {
@@ -90,34 +87,7 @@ void Multiplexer::run()
                     m_conns.close_connection(fd, *this);
                 }
             }
-            else if (role == CGI_STDIN)
-            {
-                if (m_evlist[j].events & EPOLLOUT)
-                {
-                    m_conns.conn_handle_cgi_write(fd, *this);
-                }
-                else if (m_evlist[j].events & (EPOLLHUP | EPOLLERR))
-                {
-                    m_conns.close_connection(fd, *this);
-                }
-            }
-            else if (role == CGI_STDOUT)
-            {
-                if (m_evlist[j].events & EPOLLIN)
-                {
-                    m_conns.conn_handle_cgi_read(fd, *this);
-                }
-                if (m_evlist[j].events & EPOLLHUP)
-                {
-                    m_conns.conn_finish_cgi(fd, *this);
-                }
-                else if (m_evlist[j].events & EPOLLERR)
-                {
-                    m_conns.close_connection(fd, *this);
-                }
-            }
         }
-        m_conns.check_cgi_timeouts(*this);
     }
 }
 
@@ -179,23 +149,4 @@ void Multiplexer::log_event(struct epoll_event ev)
                       << ((ev.events & EPOLLOUT) ? "EPOLLOUT " : "") << ((ev.events & EPOLLHUP) ? "EPOLLHUP " : "")
                       << ((ev.events & EPOLLRDHUP) ? "EPOLLRDHUP " : "") << ((ev.events & EPOLLERR) ? "EPOLLERR " : "")
                       << "(fd=" << unpack_conn_fd(ev.data.u64) << ")\n";
-}
-
-void Multiplexer::start_monitor_cgi(int conn_fd, int cgi_fd, FDRole role)
-{
-    struct epoll_event ev = {};
-
-    if (role == CGI_STDIN)
-        ev.events = EPOLLOUT | EPOLLRDHUP;
-    else if (role == CGI_STDOUT)
-        ev.events = EPOLLIN | EPOLLRDHUP;
-    else
-        UNREACHABLE("start_monitor_cgi got unxpected role");
-
-    ev.data.u64 = pack_data(conn_fd, role);
-
-    LOG_INFO("EPOLL") << "Registered CGI pipe (fd=" << cgi_fd << ") for client (fd=" << conn_fd << ")\n";
-
-    if (epoll_ctl(m_epfd, EPOLL_CTL_ADD, cgi_fd, &ev) == -1)
-        abort("epoll_ctl ADD CGI PIPE");
 }
