@@ -87,5 +87,4 @@ void Response::process()
 {
     init_response();
     header_builder();
-
 }
