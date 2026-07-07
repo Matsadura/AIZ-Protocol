@@ -67,6 +67,8 @@ void CGI::execute(const Request &req, const std::string &scriptPath)
         dup2(m_pipe_in[0], STDIN_FILENO);
         dup2(m_pipe_out[1], STDOUT_FILENO);
 
+        close(m_pipe_in[0]);
+        close(m_pipe_out[1]);
         close(m_pipe_in[1]);
         close(m_pipe_out[0]);
 
@@ -77,10 +79,19 @@ void CGI::execute(const Request &req, const std::string &scriptPath)
     {
         /* Parent process */
         close(m_pipe_in[0]);
+        m_pipe_in[0] = -1;
         close(m_pipe_out[1]);
+        m_pipe_out[1] = -1;
 
-        fcntl(m_pipe_in[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
-        fcntl(m_pipe_out[0], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
+        int in_flags  = fcntl(m_pipe_in[1], F_GETFL, 0);
+        int out_flags = fcntl(m_pipe_out[0], F_GETFL, 0);
+        if (in_flags == -1 || out_flags == -1)
+            abort("fcntl F_GETFL");
+        if (fcntl(m_pipe_in[1], F_SETFL, in_flags | O_NONBLOCK) == -1 ||
+            fcntl(m_pipe_out[0], F_SETFL, out_flags | O_NONBLOCK) == -1)
+            abort("fcntl F_SETFL");
+        if (fcntl(m_pipe_in[1], F_SETFD, FD_CLOEXEC) == -1 || fcntl(m_pipe_out[0], F_SETFD, FD_CLOEXEC) == -1)
+            abort("fcntl F_SETFD");
     }
 }
 
