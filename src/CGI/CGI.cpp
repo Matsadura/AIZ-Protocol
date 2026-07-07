@@ -104,6 +104,17 @@ void CGI::buildEnv(const Request &req)
         env_vars["CONTENT_TYPE"] = req.getHeader("content-type");
     }
 
+    std::map<std::string, std::string> headers = req.getHeaders();
+    for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it)
+    {
+        if (it->first == "content-length" || it->first == "content-type")
+            continue;
+        std::string header_key = "HTTP_" + it->first;
+        std::replace(header_key.begin(), header_key.end(), '-', '_');
+        std::transform(header_key.begin(), header_key.end(), header_key.begin(), ::toupper);
+        env_vars[header_key] = it->second;
+    }
+
     std::map<std::string, std::string>::iterator it;
     for (it = env_vars.begin(); it != env_vars.end(); ++it)
     {
