@@ -239,6 +239,29 @@ Connections::~Connections()
     }
 }
 
+void Connections::check_cgi_timeouts(Multiplexer &server)
+{
+    UNUSED(server);
+    time_t current_time = time(NULL);
+    const int CGI_TIMEOUT = 5;
+
+    std::map<int, connection_t>::iterator it = m_list.begin();
+    while (it != m_list.end())
+    {
+        connection_t &conn = it->second;
+        if (conn.is_cgi && (current_time - conn.cgi_start_time) > CGI_TIMEOUT)
+        {
+            LOG_ERROR("CGI") << "CGI script timeout (fd=" << conn.sockfd << ")\n";
+            kill(conn.cgi_pid, SIGKILL);
+            conn.cgi_pid = -1;
+            conn.cgi_output_buffer.clear();
+            std::string timeout_response = "HTTP/1.1 504 Gateway Timeout\r\n\r\n<h1>504 Gateway Timeout</h1><p>The script took too long to respond.</p>";
+            conn.cgi_output_buffer.insert(conn.cgi_output_buffer.end(), timeout_response.begin(), timeout_response.end());
+        }
+        it++;
+    }
+}
+
 
 /**
  * MOCK IMPLEMENTATION FOR CGI TESTING ONLY (AI GENERATED)

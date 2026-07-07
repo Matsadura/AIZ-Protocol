@@ -8,6 +8,34 @@ CGI::CGI() : m_pid(-1)
     m_pipe_out[1] = -1;
 }
 
+CGI::CGI(const CGI &other) : m_pid(other.m_pid)
+{
+    m_pipe_in[0]  = other.m_pipe_in[0];
+    m_pipe_in[1]  = other.m_pipe_in[1];
+    m_pipe_out[0] = other.m_pipe_out[0];
+    m_pipe_out[1] = other.m_pipe_out[1];
+
+    m_envp = other.m_envp;
+    m_argv = other.m_argv;
+}
+
+CGI &CGI::operator=(const CGI &other)
+{
+    if (this != &other)
+    {
+        m_pid = other.m_pid;
+
+        m_pipe_in[0]  = other.m_pipe_in[0];
+        m_pipe_in[1]  = other.m_pipe_in[1];
+        m_pipe_out[0] = other.m_pipe_out[0];
+        m_pipe_out[1] = other.m_pipe_out[1];
+
+        m_envp = other.m_envp;
+        m_argv = other.m_argv;
+    }
+    return *this;
+}
+
 CGI::~CGI()
 {
     waitAndClean();

@@ -59,7 +59,8 @@ void Multiplexer::run()
     // while (i-- > 0)
     while(true)
     {
-        ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, -1);
+        // ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, -1);
+        ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, 1000);
         for (int j = 0; j < ready; j++)
         {
             int    fd   = unpack_conn_fd(m_evlist[j].data.u64);
@@ -106,7 +107,7 @@ void Multiplexer::run()
                 {
                     m_conns.conn_handle_cgi_read(fd, *this);
                 }
-                else if (m_evlist[j].events & EPOLLHUP)
+                if (m_evlist[j].events & EPOLLHUP)
                 {
                     m_conns.conn_finish_cgi(fd, *this);
                 }
@@ -116,6 +117,7 @@ void Multiplexer::run()
                 }
             }
         }
+        m_conns.check_cgi_timeouts(*this);
     }
 }
 

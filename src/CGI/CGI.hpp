@@ -25,6 +25,8 @@ class CGI
 
   public:
     CGI();
+    CGI(const CGI &other);
+    CGI &operator=(const CGI &other);
     ~CGI();
 
     void execute(const Request &req, const std::string &scriptPath);
