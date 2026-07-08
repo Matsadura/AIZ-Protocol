@@ -23,14 +23,14 @@ Connections &Connections::operator=(const Connections &other) // NOLINT
 int Connections::accept_new(int fd, Multiplexer &server)
 {
     connection_t conn;
-    socklen_t size = sizeof conn.addr;
-    conn.sockfd    = accept(fd, reinterpret_cast<struct sockaddr *>(&conn.addr), &size);
+    socklen_t    size = sizeof conn.addr;
+    conn.sockfd       = accept(fd, reinterpret_cast<struct sockaddr *>(&conn.addr), &size);
     if (conn.sockfd == -1)
         abort("accept");
     LOG_INFO("CONNECTIONS") << "New connection accepted (fd=" << conn.sockfd << ") from "
                             << addr_to_string(reinterpret_cast<struct sockaddr_in *>(&conn.addr)) << "\n";
-    server.start_monitoring(conn.sockfd);
-    m_list.push_back(conn);
+    server.start_monitor_conn(conn.sockfd);
+    m_list[conn.sockfd] = conn;
     return conn.sockfd;
 }
 
@@ -40,16 +40,9 @@ int Connections::accept_new(int fd, Multiplexer &server)
 void Connections::close_connection(int sockfd, Multiplexer &server)
 {
     LOG_INFO("CONNECTIONS") << "Close (fd=" << sockfd << ") connection\n";
-    for (std::vector<connection_t>::iterator it = m_list.begin(); it != m_list.end(); it++)
-    {
-        if ((*it).sockfd == sockfd)
-        {
-            server.stop_monitoring(sockfd);
-            m_list.erase(it);
-            close(sockfd);
-            break;
-        }
-    }
+    m_list.erase(sockfd);
+    server.stop_monitor_conn(sockfd);
+    close(sockfd);
 }
 
 /**
@@ -57,10 +50,11 @@ void Connections::close_connection(int sockfd, Multiplexer &server)
  */
 Connections::connection_t &Connections::find(int sockfd)
 {
-    for (std::vector<connection_t>::iterator it = m_list.begin(); it != m_list.end(); it++)
+    std::map<int, connection_t>::iterator it;
+    it = m_list.find(sockfd);
+    if (it != m_list.end())
     {
-        if ((*it).sockfd == sockfd)
-            return *it;
+        return it->second;
     }
     UNREACHABLE("Epoll gives a none existing socket address, maybe forget to stop_monitoring it?");
 }
@@ -71,11 +65,11 @@ Connections::connection_t &Connections::find(int sockfd)
  * @sockfd The file descriptor signaling that data is available to read
  * @server The multiplexer managing this connection's state
  */
-void Connections::handle_read(int sockfd, Multiplexer &server)
+void Connections::conn_handle_read(int sockfd, Multiplexer &server)
 {
     Connections::connection_t &conn = Connections::find(sockfd);
-    char buff[4096];
-    ssize_t n;
+    char                       buff[4096];
+    ssize_t                    n;
 
     n = recv(sockfd, buff, sizeof(buff), 0); // @todo: I don't know the use of 4th param!
     if (n == 0)
@@ -96,16 +90,16 @@ void Connections::handle_read(int sockfd, Multiplexer &server)
     if (conn.req.getState() == Request::COMPLETE)
     {
         LOG_INFO("REQUEST") << "[REQUEST] Parsing is completed (fd=" << sockfd << ")\n";
-        server.switch_interest(sockfd, EPOLLOUT);
+        server.switch_conn_interest(sockfd, EPOLLOUT);
     }
 }
 
 Connections::~Connections()
 {
-    std::vector<connection_t>::iterator it = m_list.begin();
+    std::map<int, connection_t>::iterator it = m_list.begin();
     while (it != m_list.end())
     {
-        close((*it).sockfd);
+        close(it->second.sockfd);
         it++;
     }
 }

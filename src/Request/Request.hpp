@@ -62,6 +62,8 @@ class Request
 
     std::string                        getMethod(void) const;
     std::string                        getURI(void) const;
+    std::string                        getPath(void) const;
+    std::string                        getQuery(void) const;
     std::string                        getVersion(void) const;
     std::string                        getHeader(const std::string &key) const;
     std::map<std::string, std::string> getHeaders(void) const;

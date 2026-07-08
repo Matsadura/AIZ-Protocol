@@ -6,7 +6,7 @@
 class ListenerAddrInfo
 {
   private:
-    struct addrinfo m_hints;
+    struct addrinfo  m_hints;
     struct addrinfo *m_result;
 
     /**
@@ -19,11 +19,11 @@ class ListenerAddrInfo
     ListenerAddrInfo(const char *nodeName, const char *port);
     ~ListenerAddrInfo();
 
-    std::string toString();
-    int family();
-    int sockType();
+    std::string      toString();
+    int              family();
+    int              sockType();
     struct sockaddr *addr();
-    socklen_t addr_len();
+    socklen_t        addr_len();
 };
 
 #endif

@@ -144,6 +144,24 @@ std::string Request::getURI() const
 }
 
 /**
+ * Get the path component of the request URI.
+ * Return: The path as a string.
+ */
+std::string Request::getPath() const
+{
+    return m_path;
+}
+
+/**
+ * Get the query string of the request URI.
+ * Return: The query string as a string.
+ */
+std::string Request::getQuery() const
+{
+    return m_query;
+}
+
+/**
  * Get the HTTP version of the request (e.g., HTTP/1.1).
  * Return: The HTTP version as a string.
  */
