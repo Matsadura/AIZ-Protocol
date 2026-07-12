@@ -138,7 +138,7 @@ CgiMetaData router_request_is_cgi(const s_Server &server, const Request &req)
         }
     }
 
-    if (script_path.size() == 0)
+    if (script_path.empty())
     {
         return CgiMetaData();
     }
