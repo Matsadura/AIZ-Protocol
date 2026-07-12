@@ -76,10 +76,96 @@ std::string get_default_page(const s_Server &server, int status_code)
     return "";
 }
 
+bool is_file_regular(const std::string &path)
+{
+    struct stat file_info = {};
+
+    return stat(path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode);
+}
+
+bool is_file_executable(const std::string &filepath)
+{
+    return access(filepath.c_str(), X_OK) == 0;
+}
+
+bool is_file_readable(const std::string &filepath)
+{
+    return access(filepath.c_str(), R_OK) == 0;
+}
+
+struct CgiMetaData
+{
+    bool        is_cgi;
+    std::string script_path;
+    std::string path_info;
+    std::string interpreter_path;
+
+    CgiMetaData() : is_cgi(false)
+    {
+    }
+
+    CgiMetaData(bool is_cgi_val, const std::string &script, const std::string &info, const std::string &interpreter) :
+        is_cgi(is_cgi_val), script_path(script), path_info(info), interpreter_path(interpreter)
+    {
+    }
+};
+
+CgiMetaData router_request_is_cgi(const s_Server &server, const Request &req)
+{
+    const s_Location *location = router_get_best_matched_location(server, req.getURI());
+
+    if (!location || location->CGIhandlers.empty())
+        return CgiMetaData();
+
+    std::string sys_path = join_path(location->root, req.getURI().substr(location->path.size()));
+    std::string script_path;
+    std::string path_info;
+
+    for (std::size_t i = 0; i <= sys_path.size(); i++)
+    {
+        if (i == sys_path.size() || sys_path[i] == '/')
+        {
+            std::string current_path = sys_path.substr(0, i);
+            if (is_file_regular(current_path))
+            {
+                script_path = current_path;
+                if (i < sys_path.size())
+                {
+                    path_info = sys_path.substr(i);
+                }
+                break;
+            }
+        }
+    }
+
+    if (script_path.size() == 0)
+    {
+        return CgiMetaData();
+    }
+
+    std::size_t dot_pos   = script_path.find_last_of('.');
+    std::size_t slash_pos = script_path.find_last_of('/');
+
+    if (dot_pos != std::string::npos && (slash_pos == std::string::npos || dot_pos > slash_pos))
+    {
+        std::string                                        ext = script_path.substr(dot_pos);
+        std::map<std::string, std::string>::const_iterator it  = location->CGIhandlers.find(ext);
+
+        if (it != location->CGIhandlers.end())
+        {
+            return CgiMetaData(true, script_path, path_info, it->second);
+        }
+    }
+
+    return CgiMetaData();
+}
+
 RouterResult router_get_resource(const s_Server &server, const std::string &resource)
 {
     const s_Location *location  = router_get_best_matched_location(server, resource);
     struct stat       file_info = {};
+
+    // TODO: Handle request type GET/HEAD...
 
     if (!location)
     {
@@ -126,13 +212,13 @@ RouterResult router_get_resource(const s_Server &server, const std::string &reso
         }
 
         std::string indexPath = join_path(sys_path, location->index);
-        if (!location->index.empty() && stat(indexPath.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode))
+        if (!location->index.empty() && is_file_regular(indexPath))
         {
             sys_path = indexPath;
         }
         else if (location->autoindex)
         {
-            if (access(sys_path.c_str(), R_OK) != 0)
+            if (!is_file_readable(sys_path))
             {
                 router_log_helper(resource, location, sys_path, "Directory is unreadable for listing", 403);
                 return RouterResult(403, get_default_page(server, 403), RouterResult::ERROR_PAGE);
@@ -147,7 +233,7 @@ RouterResult router_get_resource(const s_Server &server, const std::string &reso
         }
     }
 
-    if (access(sys_path.c_str(), R_OK) != 0)
+    if (!is_file_readable(sys_path))
     {
         router_log_helper(resource, location, sys_path, "File permission denied", 403);
         return RouterResult(403, get_default_page(server, 403), RouterResult::ERROR_PAGE);
