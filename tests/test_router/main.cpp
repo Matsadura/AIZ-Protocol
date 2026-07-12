@@ -32,20 +32,10 @@ int main()
     s_Server   server = config.getConfig()[0];
 
     const char *cases[] = {
-        "/", // 200 FILE_PATH, served directly
-        "/gdb/gdbinit",                           // 200, dir + index.html
-        "/nothing-here",                        // 200, dir + index.html (different location)
-        "/forbid/" // 403
-        // "/noroot/x",                   // 404, root empty
-        // "/file-permisions/locked.txt", // 403, file unreadable
-        // "/permission/",                // 403, dir unreadable
-        // "/permission",                 // 301, missing trailing slash first
-        // "/autoindex-off/",             // 403, no index + autoindex off
-        // "/plaindir/",                  // 403, same case, different location
-        // "/rootdir/",                   // 200 STRING_BUFFER, autoindex listing
-        // "/rootdir",                    // 301, dir w/o trailing slash
-        // "/old-page",                   // 301, return directive
-        // "/cgi-bin/script.py",          // currently falls through to FILE_PATH/404 — TODO gap
+        "/",             // 200 FILE_PATH, served directly
+        "/gdb/gdbinit",  // 200, dir + index.html
+        "/nothing-here", // 200, dir + index.html (different location)
+        "/forbid/"       // 403
     };
     for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i)
         run(server, cases[i]);
