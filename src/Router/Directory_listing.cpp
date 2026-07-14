@@ -7,6 +7,37 @@ bool comp_name(const std::pair<bool, std::string> &a, const std::pair<bool, std:
     return a.second < b.second;
 }
 
+std::string html_escape_special_chars(const std::string &in)
+{
+    std::string out;
+    out.reserve(in.size());
+    for (size_t i = 0; i < in.size(); ++i)
+    {
+        switch (in[i])
+        {
+            case '&':
+                out += "&amp;";
+                break;
+            case '<':
+                out += "&lt;";
+                break;
+            case '>':
+                out += "&gt;";
+                break;
+            case '\"':
+                out += "&quot;";
+                break;
+            case '\'':
+                out += "&#39;";
+                break;
+            default:
+                out += in[i];
+                break;
+        }
+    }
+    return out;
+}
+
 std::string generate_directory_listing(const std::string &dir_path, const std::string &uri_path)
 {
     std::stringstream                          output;
@@ -46,7 +77,8 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
         const std::string &name   = entries[i].second;
         std::string        suffix = is_dir ? "/" : "";
 
-        output << "<a href=\"" << name << suffix << "\">" << name << suffix << "</a>\n";
+        // TODO: Use URL encoding to encode the name inside the htef attr
+        output << "<a href=\"" << name << suffix << "\">" << html_escape_special_chars(name) << suffix << "</a>\n";
     }
 
     output << "</pre><hr></body></html>\n";

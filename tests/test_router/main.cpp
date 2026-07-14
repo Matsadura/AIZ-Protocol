@@ -12,8 +12,6 @@ static const char *type_str(RouterResult::Type t)
             return "STRING_BUFFER";
         case RouterResult::FILE_PATH:
             return "FILE_PATH";
-        case RouterResult::ERROR_PAGE:
-            return "ERROR_PAGE";
         case RouterResult::REDIRECTION:
             return "REDIRECTION";
     }
@@ -57,6 +55,11 @@ int main()
     // --- plain file serving ---
     expect_router_result(main_site, "/index.html", RouterResult(200, HTML_ROOT "index.html", RouterResult::FILE_PATH));
 
+    expect_router_result(main_site, "/indexed_dir/html/normaldir/../normaldir/../about.html",
+                         RouterResult(200, HTML_ROOT "normaldir/../normaldir/../about.html", RouterResult::FILE_PATH));
+    expect_router_result(main_site, "/indexed_dir/html/normaldir/../normaldir/../../../",
+                         RouterResult(400, get_default_page(main_site, 400), RouterResult::FILE_PATH));
+
     expect_router_result(main_site, "/about.html", RouterResult(200, HTML_ROOT "about.html", RouterResult::FILE_PATH));
 
     // --- directory handling ---
@@ -73,28 +76,28 @@ int main()
     expect_router_result(main_site, "/indexed_dir", RouterResult(301, "/indexed_dir/", RouterResult::REDIRECTION));
 
     expect_router_result(main_site, "/noindex/",
-                         RouterResult(403, get_default_page(main_site, 403), RouterResult::ERROR_PAGE));
+                         RouterResult(403, get_default_page(main_site, 403), RouterResult::FILE_PATH));
 
     expect_router_result(main_site, "/noindex/index.php",
                          RouterResult(200, "/tmp/webserv_test/www/noindexdir/index.php", RouterResult::FILE_PATH));
 
     // --- permissions ---
     expect_router_result(main_site, "/locked-listing/",
-                         RouterResult(403, get_default_page(main_site, 403), RouterResult::ERROR_PAGE));
+                         RouterResult(403, get_default_page(main_site, 403), RouterResult::FILE_PATH));
     expect_router_result(main_site, "/secret.txt",
-                         RouterResult(403, get_default_page(main_site, 403), RouterResult::ERROR_PAGE));
+                         RouterResult(403, get_default_page(main_site, 403), RouterResult::FILE_PATH));
     expect_router_result(main_site, "/dir_listing_off/",
                          RouterResult(200, "/tmp/webserv_test/www/noindexdir/index.php", RouterResult::FILE_PATH));
 
     // --- missing things ---
     expect_router_result(main_site, "/does-not-exist.txt",
-                         RouterResult(404, get_default_page(main_site, 404), RouterResult::ERROR_PAGE));
+                         RouterResult(404, get_default_page(main_site, 404), RouterResult::FILE_PATH));
 
     expect_router_result(main_site, "/noroot/anything",
-                         RouterResult(404, get_default_page(main_site, 404), RouterResult::ERROR_PAGE));
+                         RouterResult(404, get_default_page(main_site, 404), RouterResult::FILE_PATH));
 
     expect_router_result(main_site, "/noroot/",
-                         RouterResult(404, get_default_page(main_site, 404), RouterResult::ERROR_PAGE));
+                         RouterResult(404, get_default_page(main_site, 404), RouterResult::FILE_PATH));
 
     // --- redirection directive ---
     expect_router_result(main_site, "/old-page", RouterResult(301, "/new-page", RouterResult::REDIRECTION));
@@ -106,10 +109,17 @@ int main()
     expect_router_result(main_site, "/sysfiles/hostname", RouterResult(200, "/etc/hostname", RouterResult::FILE_PATH));
 
     expect_router_result(main_site, "/sysfiles/shadow",
-                         RouterResult(403, get_default_page(main_site, 403), RouterResult::ERROR_PAGE));
+                         RouterResult(403, get_default_page(main_site, 403), RouterResult::FILE_PATH));
 
     expect_router_result(main_site, "/sysfiles/nope",
-                         RouterResult(404, get_default_page(main_site, 404), RouterResult::ERROR_PAGE));
+                         RouterResult(404, get_default_page(main_site, 404), RouterResult::FILE_PATH));
+
+    expect_router_result(main_site, "/sysfiles/../../../",
+                         RouterResult(400, get_default_page(main_site, 400), RouterResult::FILE_PATH));
+    expect_router_result(main_site, "/sysfiles/../database.db",
+                         RouterResult(400, get_default_page(main_site, 400), RouterResult::FILE_PATH));
+    expect_router_result(main_site, "/sysfiles/../database.db",
+                         RouterResult(400, get_default_page(main_site, 400), RouterResult::FILE_PATH));
 
     std::cout << "\n\nRan " << g_id << " tests: ";
     if (g_fail != 0)

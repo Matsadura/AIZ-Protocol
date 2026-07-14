@@ -14,8 +14,7 @@ class RouterResult
     enum Type
     {
         STRING_BUFFER, // @m_data is the content that will be served
-        FILE_PATH,     // @m_data is file path that needs to be read and then served
-        ERROR_PAGE,    // @m_data can be a valid file_path or empty, if its empty means use your default
+        FILE_PATH,     // @m_data can be a valid file_path or empty, if its empty means use your default
         REDIRECTION,   // @m_data is the location for the redirection
     };
 
@@ -41,6 +40,11 @@ class RouterResult
  * I only use `/` so this screams NOT CROSS-PLATFORM, mybe something to fix later?
  */
 std::string join_path(const std::string &root, const std::string &rest);
+
+/**
+ * Returns: false if path  will traverse above the root directory, true if its not
+ */
+bool path_traverse_is_safe(const std::string &str);
 
 /**
  * Returns a Boolean stating whether a string starts with the specified prefix

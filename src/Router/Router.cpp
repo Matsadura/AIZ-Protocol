@@ -111,12 +111,14 @@ struct CgiMetaData
 
 CgiMetaData router_request_is_cgi(const s_Server &server, const Request &req)
 {
-    const s_Location *location = router_get_best_matched_location(server, req.getURI());
+    const s_Location *location = router_get_best_matched_location(server, req.getPath());
 
-    if (!location || location->CGIhandlers.empty())
+    if (!location || location->CGIhandlers.empty() || location->root.empty())
+    {
         return CgiMetaData();
+    }
 
-    std::string sys_path = join_path(location->root, req.getURI().substr(location->path.size()));
+    std::string sys_path = join_path(location->root, req.getPath().substr(location->path.size()));
     std::string script_path;
     std::string path_info;
 
@@ -125,6 +127,11 @@ CgiMetaData router_request_is_cgi(const s_Server &server, const Request &req)
         if (i == sys_path.size() || sys_path[i] == '/')
         {
             std::string current_path = sys_path.substr(0, i);
+            // TODO: Not save! location->root will be counted going above root will happen anyway
+            if (!path_traverse_is_safe(current_path))
+            {
+                return CgiMetaData();
+            }
             if (is_file_regular(current_path))
             {
                 script_path = current_path;
@@ -165,12 +172,11 @@ RouterResult router_get_resource(const s_Server &server, const std::string &reso
     struct stat       file_info = {};
 
     // TODO: Handle request type GET/HEAD...
-    // TODO: Handle relative paths
 
     if (!location)
     {
         router_log_helper(resource, location, "", "no matching location", 404);
-        return RouterResult(404, get_default_page(server, 404), RouterResult::ERROR_PAGE);
+        return RouterResult(404, get_default_page(server, 404), RouterResult::FILE_PATH);
     }
 
     if (location->redirect_code != 0)
@@ -189,19 +195,24 @@ RouterResult router_get_resource(const s_Server &server, const std::string &reso
     if (location->root.empty())
     {
         router_log_helper(resource, location, "", "Root directory is not configured", 404);
-        return RouterResult(404, get_default_page(server, 404), RouterResult::ERROR_PAGE);
+        return RouterResult(404, get_default_page(server, 404), RouterResult::FILE_PATH);
     }
 
     std::string sys_path(resource);
     sys_path.erase(0, location->path.size());
-    sys_path = join_path(location->root, sys_path);
 
-    // TODO: CGI routing goes here?
+    if (!path_traverse_is_safe(sys_path)) // Prevent path traversing like: ../././../..
+    {
+        router_log_helper(resource, location, sys_path, "Attempting to go above root directory", 400);
+        return RouterResult(400, get_default_page(server, 400), RouterResult::FILE_PATH);
+    }
+
+    sys_path = join_path(location->root, sys_path);
 
     if (stat(sys_path.c_str(), &file_info) != 0)
     {
         router_log_helper(resource, location, sys_path, "File or directory does not exist", 404);
-        return RouterResult(404, get_default_page(server, 404), RouterResult::ERROR_PAGE);
+        return RouterResult(404, get_default_page(server, 404), RouterResult::FILE_PATH);
     }
     if (S_ISDIR(file_info.st_mode))
     {
@@ -221,7 +232,7 @@ RouterResult router_get_resource(const s_Server &server, const std::string &reso
             if (!is_file_readable(sys_path))
             {
                 router_log_helper(resource, location, sys_path, "Directory is unreadable for listing", 403);
-                return RouterResult(403, get_default_page(server, 403), RouterResult::ERROR_PAGE);
+                return RouterResult(403, get_default_page(server, 403), RouterResult::FILE_PATH);
             }
             router_log_helper(resource, location, sys_path, "Directory listing will be performed", 200);
             return RouterResult(200, generate_directory_listing(sys_path, resource), RouterResult::STRING_BUFFER);
@@ -229,15 +240,92 @@ RouterResult router_get_resource(const s_Server &server, const std::string &reso
         else
         {
             router_log_helper(resource, location, sys_path, "Directory with no index file and listing is off", 403);
-            return RouterResult(403, get_default_page(server, 403), RouterResult::ERROR_PAGE);
+            return RouterResult(403, get_default_page(server, 403), RouterResult::FILE_PATH);
         }
     }
 
     if (!is_file_readable(sys_path))
     {
         router_log_helper(resource, location, sys_path, "File permission denied", 403);
-        return RouterResult(403, get_default_page(server, 403), RouterResult::ERROR_PAGE);
+        return RouterResult(403, get_default_page(server, 403), RouterResult::FILE_PATH);
     }
     router_log_helper(resource, location, sys_path, "Will be served", 200);
     return RouterResult(200, sys_path, RouterResult::FILE_PATH);
 }
+
+// RouterResult router_get_resource_delete(const s_Server &server, const std::string &resource)
+// {
+//     const s_Location *location  = router_get_best_matched_location(server, resource);
+//     struct stat       file_info = {};
+//
+//     // TODO: Handle request type GET/HEAD...
+//
+//     if (!location)
+//     {
+//         router_log_helper(resource, location, "", "no matching location", 404);
+//         return RouterResult(404, get_default_page(server, 404), RouterResult::FILE_PATH);
+//     }
+//
+//     if (location->redirect_code != 0)
+//     {
+//         std::string redirect_uri(resource);
+//         redirect_uri.erase(0, location->path.size());
+//         redirect_uri = join_path(location->redirect_path, redirect_uri);
+//         if (redirect_uri[0] != '/')
+//         {
+//             redirect_uri = "/" + redirect_uri;
+//         }
+//         router_log_helper(resource, location, redirect_uri, "Redirection location", location->redirect_code);
+//         return RouterResult(location->redirect_code, redirect_uri, RouterResult::REDIRECTION);
+//     }
+//
+//     if (location->root.empty())
+//     {
+//         router_log_helper(resource, location, "", "Root directory is not configured", 404);
+//         return RouterResult(404, get_default_page(server, 404), RouterResult::FILE_PATH);
+//     }
+//
+//     std::string sys_path(resource);
+//     sys_path.erase(0, location->path.size());
+//
+//     if (!path_traverse_is_safe(sys_path)) // Prevent path traversing like: ../././../..
+//     {
+//         router_log_helper(resource, location, sys_path, "Attempting to go above root directory", 400);
+//         return RouterResult(400, get_default_page(server, 400), RouterResult::FILE_PATH);
+//     }
+//
+//     sys_path = join_path(location->root, sys_path);
+//
+//     if (stat(sys_path.c_str(), &file_info) != 0)
+//     {
+//         router_log_helper(resource, location, sys_path, "File or directory does not exist", 404);
+//         return RouterResult(404, get_default_page(server, 404), RouterResult::FILE_PATH);
+//     }
+//     if (S_ISDIR(file_info.st_mode))
+//     {
+//         if (resource.empty() || resource[resource.size() - 1] != '/')
+//         {
+//             router_log_helper(resource, location, resource + "/", "Directory; deleting without trailing slash", 409);
+//             return RouterResult(409, resource + "/", RouterResult::FILE_PATH);
+//         }
+//         else if (try_unlink(sys_path))
+//         {
+//             // TODO: if cannot be deleted respond with 403
+//             router_log_helper(resource, location, sys_path, "delete Permission denied", 403);
+//             return RouterResult(403, get_default_page(server, 403), RouterResult::FILE_PATH);
+//         }
+//         else
+//         {
+//             router_log_helper(resource, location, sys_path, "Deleting directory", 204);
+//             return RouterResult(204, get_default_page(server, 204), RouterResult::FILE_PATH);
+//         }
+//     }
+//
+//     if (!try_unlink(sys_path))
+//     {
+//         router_log_helper(resource, location, sys_path, "unlink(): File permission denied", 403);
+//         return RouterResult(403, get_default_page(server, 403), RouterResult::FILE_PATH);
+//     }
+//     router_log_helper(resource, location, sys_path, "unlink()", 204);
+//     return RouterResult(204, sys_path, RouterResult::FILE_PATH);
+// }
