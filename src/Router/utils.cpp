@@ -9,11 +9,20 @@ bool string_start_with(const std::string &bigger_string, const std::string &pref
 
 std::string join_path(const std::string &root, const std::string &rest)
 {
-    bool rootSlash = !root.empty() && root[root.size() - 1] == '/';
-    bool restSlash = !rest.empty() && rest[0] == '/';
+    if (root.empty() || rest.empty())
+    {
+        return root + rest;
+    }
+
+    bool rootSlash = root[root.size() - 1] == '/';
+    bool restSlash = rest[0] == '/';
     if (rootSlash && restSlash)
+    {
         return root + rest.substr(1);
+    }
     if (!rootSlash && !restSlash)
+    {
         return root + "/" + rest;
+    }
     return root + rest;
 }

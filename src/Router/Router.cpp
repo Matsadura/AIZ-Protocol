@@ -56,6 +56,18 @@ void router_log_helper(const std::string &resource, const s_Location *loc, const
     std::cout << ": " << msg << "]" << " (status_code=" << http_code << ")\n";
 }
 
+bool is_file_regular(const std::string &path)
+{
+    struct stat file_info = {};
+
+    return stat(path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode);
+}
+
+bool is_file_executable(const std::string &filepath)
+{
+    return access(filepath.c_str(), X_OK) == 0;
+}
+
 /**
  * Return: path of the default page for the @status_code or empty string meaning use your default, you don't have a
  * default? that you problem!
@@ -68,24 +80,11 @@ std::string get_default_page(const s_Server &server, int status_code)
     if (it == server.error_page.end())
         return "";
     std::string page_path = it->second;
-    struct stat file_info = {};
-    if (stat(page_path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode))
+    if (is_file_regular(page_path))
     {
         return page_path;
     }
     return "";
-}
-
-bool is_file_regular(const std::string &path)
-{
-    struct stat file_info = {};
-
-    return stat(path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode);
-}
-
-bool is_file_executable(const std::string &filepath)
-{
-    return access(filepath.c_str(), X_OK) == 0;
 }
 
 bool is_file_readable(const std::string &filepath)
@@ -166,6 +165,7 @@ RouterResult router_get_resource(const s_Server &server, const std::string &reso
     struct stat       file_info = {};
 
     // TODO: Handle request type GET/HEAD...
+    // TODO: Handle relative paths
 
     if (!location)
     {
@@ -182,7 +182,7 @@ RouterResult router_get_resource(const s_Server &server, const std::string &reso
         {
             redirect_uri = "/" + redirect_uri;
         }
-        router_log_helper(resource, location, redirect_uri, "Redirection location", 301);
+        router_log_helper(resource, location, redirect_uri, "Redirection location", location->redirect_code);
         return RouterResult(location->redirect_code, redirect_uri, RouterResult::REDIRECTION);
     }
 

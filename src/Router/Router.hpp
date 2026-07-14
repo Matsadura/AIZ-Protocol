@@ -6,16 +6,16 @@
 #include <unistd.h>
 
 /**
- * Use @m_data_type to decide what to do, because @m_data can be mulitple things
+ * Use @m_data_type to decide what to do, because @m_data can be multiple things
  */
 class RouterResult
 {
   public:
     enum Type
     {
-        STRING_BUFFER, // @m_data is the content that will be server
-        FILE_PATH,     // @m_data is file path that needs to be read and then server
-        ERROR_PAGE,    // @m_data can be a valid file_path or empty, if its empty means use you're default
+        STRING_BUFFER, // @m_data is the content that will be served
+        FILE_PATH,     // @m_data is file path that needs to be read and then served
+        ERROR_PAGE,    // @m_data can be a valid file_path or empty, if its empty means use your default
         REDIRECTION,   // @m_data is the location for the redirection
     };
 
@@ -26,6 +26,11 @@ class RouterResult
     RouterResult(int http_code, const std::string &data, Type data_type) :
         m_http_code(http_code), m_data(data), m_data_type(data_type)
     {
+    }
+
+    bool operator==(const RouterResult &other)
+    {
+        return m_http_code == other.m_http_code && m_data == other.m_data && m_data_type == other.m_data_type;
     }
 };
 
@@ -54,3 +59,4 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
  * @server: the one that received the connection
  */
 RouterResult router_get_resource(const s_Server &server, const std::string &resource);
+std::string  get_default_page(const s_Server &server, int status_code);
