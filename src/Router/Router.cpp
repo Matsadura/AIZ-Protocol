@@ -15,7 +15,11 @@ RouterResult Router::get_result()
     {
         return handle_get();
     }
-    return forbidden();
+    if (m_method == "DELETE")
+    {
+        return handle_delete();
+    }
+    return http_method_not_allowed();
 }
 
 RouterResult Router::init_error_result(int http_code)
@@ -24,24 +28,39 @@ RouterResult Router::init_error_result(int http_code)
     return RouterResult(http_code, file_path, RouterResult::FILE_PATH);
 }
 
-RouterResult Router::not_found()
-{
-    return init_error_result(404);
-}
-
-RouterResult Router::forbidden()
-{
-    return init_error_result(403);
-}
-
-RouterResult Router::directory_listing(const std::string &dir_path)
+RouterResult Router::http_directory_listing(const std::string &dir_path)
 {
     return RouterResult(200, generate_directory_listing(dir_path, m_uri), RouterResult::STRING_BUFFER);
 }
 
-RouterResult Router::redirection(int http_code, const std::string &rediretion_location)
+RouterResult Router::http_no_content()
+{
+    return init_error_result(204);
+}
+
+RouterResult Router::http_redirection(int http_code, const std::string &rediretion_location)
 {
     return RouterResult(http_code, rediretion_location, RouterResult::REDIRECTION);
+}
+
+RouterResult Router::http_forbidden()
+{
+    return init_error_result(403);
+}
+
+RouterResult Router::http_not_found()
+{
+    return init_error_result(404);
+}
+
+RouterResult Router::http_method_not_allowed()
+{
+    return init_error_result(405);
+}
+
+RouterResult Router::http_conflict()
+{
+    return init_error_result(409);
 }
 
 RouterResult Router::handle_get()
@@ -51,7 +70,7 @@ RouterResult Router::handle_get()
     if (!m_resource.exists())
     {
         router_log_helper(m_uri, m_resource.get_location(), disk_path, "File or directory does not exist", 404);
-        return not_found();
+        return http_not_found();
     }
 
     if (m_resource.is_directory())
@@ -60,7 +79,7 @@ RouterResult Router::handle_get()
         {
             router_log_helper(m_uri, m_resource.get_location(), m_uri + "/",
                               "Directory; redirecting with trailing slash", 301);
-            return redirection(301, m_uri + "/");
+            return http_redirection(301, m_uri + "/");
         }
 
         const s_Location *loc = m_resource.get_location();
@@ -75,23 +94,61 @@ RouterResult Router::handle_get()
             if (!is_file_readable(disk_path))
             {
                 router_log_helper(m_uri, loc, disk_path, "Directory is unreadable for listing", 403);
-                return forbidden();
+                return http_forbidden();
             }
             router_log_helper(m_uri, loc, disk_path, "Directory listing will be performed", 200);
-            return directory_listing(disk_path);
+            return http_directory_listing(disk_path);
         }
         else
         {
             router_log_helper(m_uri, loc, disk_path, "Directory with no index file and listing is off", 403);
-            return forbidden();
+            return http_forbidden();
         }
     }
 
     if (!is_file_readable(disk_path))
     {
         router_log_helper(m_uri, m_resource.get_location(), disk_path, "File permission denied", 403);
-        return forbidden();
+        return http_forbidden();
     }
     router_log_helper(m_uri, m_resource.get_location(), disk_path, "Will be served", 200);
     return RouterResult(200, disk_path, RouterResult::FILE_PATH);
+}
+
+RouterResult Router::handle_delete()
+{
+    std::string       disk_path = m_resource.get_disk_path();
+    const s_Location *loc       = m_resource.get_location();
+
+    if (!m_resource.exists())
+    {
+        router_log_helper(m_uri, loc, disk_path, "File or directory does not exist", 404);
+        return http_not_found();
+    }
+
+    if (m_resource.is_directory() && (m_uri.empty() || m_uri[m_uri.size() - 1] != '/'))
+    {
+        router_log_helper(m_uri, loc, m_uri + "/", "Directory; cannot delete without trailing slash", 409);
+        return http_conflict();
+    }
+
+    if (std::remove(disk_path.c_str()) != 0)
+    {
+        int         err     = errno;
+        const char *err_msg = std::strerror(err);
+
+        if (err == ENOTEMPTY || err == EEXIST)
+        {
+            router_log_helper(m_uri, loc, disk_path, err_msg, 409);
+            return http_conflict();
+        }
+
+        router_log_helper(m_uri, loc, disk_path, err_msg, 403);
+        return http_forbidden();
+    }
+    else
+    {
+        router_log_helper(m_uri, loc, disk_path, "Has been deleted", 204);
+        return http_no_content();
+    }
 }
