@@ -37,4 +37,5 @@ class Router
 
     RouterResult handle_get();
     RouterResult handle_delete();
+    RouterResult handle_post();
 };

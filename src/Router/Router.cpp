@@ -152,3 +152,51 @@ RouterResult Router::handle_delete()
         return http_no_content();
     }
 }
+
+RouterResult Router::handle_post()
+{
+    std::string       disk_path = m_resource.get_disk_path();
+    const s_Location *loc       = m_resource.get_location();
+
+    if (m_resource.exists())
+    {
+        if (m_resource.is_directory())
+        {
+            router_log_helper(m_uri, loc, disk_path, "Directory posting is not allowed", 403);
+            return http_forbidden();
+        }
+
+        if (access(disk_path.c_str(), W_OK) != 0)
+        {
+            router_log_helper(m_uri, loc, disk_path, "File is not writable", 403);
+            return http_forbidden();
+        }
+    }
+    else
+    {
+        std::string parent_dir;
+        size_t      last_slash = disk_path.find_last_of('/');
+
+        if (last_slash == std::string::npos)
+        {
+            parent_dir = ".";
+        }
+        else if (last_slash == 0)
+        {
+            parent_dir = "/";
+        }
+        else
+        {
+            parent_dir = disk_path.substr(0, last_slash);
+        }
+
+        if (access(parent_dir.c_str(), W_OK | X_OK) != 0)
+        {
+            router_log_helper(m_uri, loc, parent_dir, "Parent directory is not writable/accessible", 403);
+            return http_forbidden();
+        }
+    }
+
+    router_log_helper(m_uri, loc, disk_path, "Path is writable for POST", 200);
+    return RouterResult(200, disk_path, RouterResult::FILE_PATH);
+}
