@@ -9,6 +9,8 @@
 // C Standard Library
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <ctime>
 
 // POSIX & Networking APIs
 #include <netdb.h>      // Host/network resolution (getaddrinfo, addrinfo)

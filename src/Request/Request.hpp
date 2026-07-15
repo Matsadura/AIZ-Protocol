@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdlib>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -21,6 +22,9 @@
 #define HEADER_TOO_LARGE 431
 #define NOT_IMPLEMENTED 501
 
+#define FULL_RESET 0
+#define PARTIAL_RESET 1
+
 class Request
 {
   public:
@@ -37,6 +41,7 @@ class Request
     {
         CHUNK_SIZE,
         CHUNK_DATA,
+        CHUNK_DATA_CRLF,
         CHUNK_TRAILER
     };
 
@@ -48,44 +53,49 @@ class Request
     void appendDataAndParse(const char *data, size_t length);
     void setMaxBodySize(size_t max_size);
 
-    void setError(int error_code);
+    void        setError(int error_code);
     ParserState getState(void) const;
-    int getErrorCode(void) const;
-    bool isComplete(void) const;
+    int         getErrorCode(void) const;
+    bool        isComplete(void) const;
 
-    std::string getMethod(void) const;
-    std::string getURI(void) const;
-    std::string getVersion(void) const;
-    std::string getHeader(const std::string &key) const;
+    void reset(int reset_type);
+
+    std::string                        getMethod(void) const;
+    std::string                        getURI(void) const;
+    std::string                        getPath(void) const;
+    std::string                        getQuery(void) const;
+    std::string                        getVersion(void) const;
+    std::string                        getHeader(const std::string &key) const;
     std::map<std::string, std::string> getHeaders(void) const;
-    const std::vector<char> &getBody(void) const;
+    const std::vector<char>           &getBody(void) const;
+    const std::string                 &getRawBuffer(void) const;
 
   private:
     ParserState m_state;
     std::string m_raw_buffer;
-    int m_error_code;
-    size_t m_max_body_size;
+    int         m_error_code;
+    size_t      m_max_body_size;
 
-    std::string m_method;
-    std::string m_uri;
-    std::string m_path;
-    std::string m_query;
-    std::string m_version;
+    std::string                        m_method;
+    std::string                        m_uri;
+    std::string                        m_path;
+    std::string                        m_query;
+    std::string                        m_version;
     std::map<std::string, std::string> m_headers;
-    std::vector<char> m_body;
+    std::vector<char>                  m_body;
 
-    bool m_is_chunked;
+    bool   m_is_chunked;
     size_t m_content_length;
 
     ChunkState m_chunk_state;
-    size_t m_current_chunk_size;
-    size_t m_chunk_bytes_read;
+    size_t     m_chunk_bytes_remaining;
 
     /* Core parsing functions */
 
     void parseRequestLine(void);
     void parseHeaders(void);
     void parseBody(void);
+    bool parseUnchunkedBody(void);
     void parseChunkedBody(void);
 
     /* Helper functions for request line parsing and validation */
@@ -98,7 +108,7 @@ class Request
     bool validateURI(void);
     bool validateVersion(void);
 
-    /* Helper functions for header validation */
+    /* Helper functions for header validation and parsing */
 
     bool validateHeaderKeyFormat(const std::string &key);
     bool validateHeaderKeyNotEmpty(const std::string &key);
@@ -109,7 +119,18 @@ class Request
     bool validateContentLengthOverflow(const std::string &value, size_t &result);
     bool validateHeaderContentLength(const std::string &key, const std::string &value);
     bool validateHTTP11Host(void);
+    bool validateTransferEncoding(const std::string &value);
     bool isBodyChunked(void) const;
+    void parseContentLengthHeader(void);
+
+    /* Helper functions for body parsing */
+    bool validateBodyHeaders(void);
+    bool validateBodySize(size_t new_data_size);
+    bool validateChunkSizeFormat(const std::string &line);
+    bool parseChunkSize(void);
+    bool parseChunkData(void);
+    bool parseChunkDataCRLF(void);
+    bool parseChunkTrailer(void);
 };
 
 #endif /* REQUEST_HPP */
