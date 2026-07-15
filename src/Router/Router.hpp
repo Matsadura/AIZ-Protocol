@@ -33,6 +33,7 @@ class RouterResult
     }
 };
 
+RouterResult router_get_resource(const s_Server &server, const std::string &resource);
 /**
  * Join two path segments
  *
@@ -62,5 +63,5 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
  * @resource: is the uri requested by the user
  * @server: the one that received the connection
  */
-RouterResult router_get_resource(const s_Server &server, const std::string &resource);
+
 std::string  get_default_page(const s_Server &server, int status_code);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Request/Request.hpp"
+#include "../Router/Router.hpp"
 #include <cerrno>
 #include <cstdlib>
 #include <fstream>
@@ -15,6 +16,11 @@
 #define CHUNK_BUFFER_SIZE 4096
 #define NO_CONTENT 204
 #define CREATED 201
+#define HTTP_MOVED_PERMANENTLY 301
+#define HTTP_FOUND 302
+#define HTTP_SEE_OTHER 303
+#define HTTP_TEMPORARY_REDIRECT 307
+#define HTTP_PERMANENT_REDIRECT 308
 
 class Response
 {
@@ -26,37 +32,41 @@ class Response
         RESPONSE_COMPLETE,
     };
 
-    Response(const Request &request);
+    Response(const s_Server &server, const Request &request, const RouterResult &router);
     ~Response(void);
-    
+
     void process();
-    
+
     // Getters
     const std::string &getResponseBuffer();
-    ResponseState getState() const { return m_state; }
+
+    ResponseState getState() const
+    {
+        return m_state;
+    }
 
   private:
     ResponseState m_state;
-    size_t m_buffer_offset;
-    int m_status_code;
+    size_t        m_buffer_offset;
+    int           m_status_code;
     std::ifstream m_file_input;
-    Request m_request;
-    std::string m_response_buffer;
-    std::string m_body_content;
-    size_t m_content_length;
-    std::string m_content_type;
+    Request       m_request;
+    RouterResult  m_router;
+    std::string   m_response_buffer;
+    std::string   m_body_content;
+    size_t        m_content_length;
+    std::string   m_content_type;
+    s_Server      m_server;
 
-    void init_response();
-    void handle_error(int fd);
-    void header_builder();
+    void        init_response();
+    void        handle_error(int fd);
+    void        header_builder();
     std::string getStatusMessage(int code);
-    void chunks_handler();
+    void        chunks_handler();
     std::string toHex(size_t size);
-    void generateErrorBody();
-    void init_GET(const std::string &file_path);
-    void init_DELETE(const std::string &file_path);
-    void init_POST(const std::string &file_path);
+    void        generateErrorBody();
+    void        init_GET();
+    void        init_DELETE();
+    void        init_POST();
     std::string get_content_type(const std::string &filepath);
-
-
 };

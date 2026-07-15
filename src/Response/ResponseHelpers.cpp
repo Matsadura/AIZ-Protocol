@@ -6,82 +6,61 @@ void Response::generateErrorBody()
     ss << "<h1>" << m_status_code << " " << getStatusMessage(m_status_code) << "</h1>";
     m_body_content = ss.str();
     m_content_length = m_body_content.size();
-    m_state        = RESPONSE_SEND_HEADERS;
 }
 
-void Response::init_GET(const std::string &file_path)
+void Response::init_GET()
 {
-    struct stat bff = {};
-    if (stat(file_path.c_str(), &bff) != 0)
+    if (m_router.m_data.empty())
     {
-        if (errno == ENOENT)
-            m_status_code = NOT_FOUND;
-        else if (errno == EACCES)
-            m_status_code = FORBIDDEN;
-        else
-            m_status_code = INTERNAL_SERVER_ERROR;
-
+        m_status_code = m_router.m_http_code;
         generateErrorBody();
-        return;
     }
     else
     {
-        m_file_input.open(file_path.c_str(), std::ios::binary);
-        if (!m_file_input)
-        {
-            m_status_code = INTERNAL_SERVER_ERROR;
-            generateErrorBody();
-        }
-        else
-        {
-            std::stringstream ss;
-            ss << m_file_input.rdbuf();
-            m_body_content = ss.str();
-            m_file_input.close();
-            m_status_code = 200;
-        }
+        m_body_content = m_router.m_data;
+        m_status_code = 200;
     }
 }
 
-void Response::init_DELETE(const std::string &file_path)
-{
-    if (unlink(file_path.c_str()) == 0)
-    {
-        m_status_code  = 204;
-        m_body_content = "";
-    }
-    else
-    {
-        if (errno == EACCES)
-            m_status_code = FORBIDDEN;
-        else if (errno == ENOENT)
-            m_status_code = NOT_FOUND;
-        else
-            m_status_code = INTERNAL_SERVER_ERROR;
-        generateErrorBody();
-        return;
-    }
-}
+// void Response::init_DELETE()
+// {
+//     if (unlink(file_path.c_str()) == 0)
+//     {
+//         m_status_code  = 204;
+//         m_body_content = "";
+//     }
+//     else
+//     {
+//         if (errno == EACCES)
+//             m_status_code = FORBIDDEN;
+//         else if (errno == ENOENT)
+//             m_status_code = NOT_FOUND;
+//         else
+//             m_status_code = INTERNAL_SERVER_ERROR;
+//         generateErrorBody();
+//         return;
+//     }
+// }
 
-void Response::init_POST(const std::string &file_path)
-{
-    std::ofstream outfile(file_path.c_str(), std::ios::binary);
-    if (!outfile)
-    {
-        m_status_code = INTERNAL_SERVER_ERROR;
-        generateErrorBody();
-        return;
-    }
-    else
-    {
-        std::vector<char> vec_body = m_request.getBody();
-        if (!vec_body.empty())
-            outfile.write(&vec_body[0], static_cast<std::streamsize>(vec_body.size()));
-        outfile.close();
-        m_status_code  = 201;
-        m_body_content = "<html><body><h1>File Uploaded Successfully</h1></body></html>";
-    }
-}
+// void Response::init_POST()
+// {
+//     std::ofstream outfile(file_path.c_str(), std::ios::binary);
+//     if (!outfile)
+//     {
+//         m_status_code = INTERNAL_SERVER_ERROR;
+//         generateErrorBody();
+//         return;
+//     }
+//     else
+//     {
+//         std::vector<char> vec_body = m_request.getBody();
+//         if (!vec_body.empty())
+//             outfile.write(&vec_body[0], static_cast<std::streamsize>(vec_body.size()));
+//         outfile.close();
+//         m_status_code  = 201;
+//         m_body_content = "<html><body><h1>File Uploaded Successfully</h1></body></html>";
+//     }
+// }
 
 std::string Response::getStatusMessage(int code)
 {
@@ -109,6 +88,16 @@ std::string Response::getStatusMessage(int code)
             return "Internal Server Error";
         case 501:
             return "Not Implemented";
+        case 301:
+            return "Moved Permanently";
+        case 302:
+            return "Found";
+        case 303:
+            return "See Other";
+        case 307:
+            return "Temporary Redirect";
+        case 308:
+            return "Permanent Redirect";
         default:
             return "Internal Server Error";
     }
