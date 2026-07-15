@@ -2,6 +2,8 @@
 #include "../config_file_parser/parser/configfile.hpp"
 #include "../core/Common.h"
 #include "RouterResource.hpp"
+#include <cerrno>
+#include <cstring>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -25,10 +27,14 @@ class Router
 
     // helper to init RouterResult
     RouterResult init_error_result(int http_code);
-    RouterResult not_found();
-    RouterResult forbidden();
-    RouterResult directory_listing(const std::string &dir_path);
-    RouterResult redirection(int http_code, const std::string &location);
+    RouterResult http_not_found();
+    RouterResult http_forbidden();
+    RouterResult http_redirection(int http_code, const std::string &location);
+    RouterResult http_directory_listing(const std::string &dir_path);
+    RouterResult http_conflict();
+    RouterResult http_no_content();
+    RouterResult http_method_not_allowed();
 
     RouterResult handle_get();
+    RouterResult handle_delete();
 };
