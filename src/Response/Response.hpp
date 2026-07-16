@@ -24,15 +24,15 @@
 
 class Response
 {
-  public:
-    enum ResponseState
-    {
-        RESPONSE_INIT,
-        RESPONSE_SEND_HEADERS,
-        RESPONSE_COMPLETE,
-    };
+  // public:
+  //   enum ResponseState
+  //   {
+  //       RESPONSE_INIT,
+  //       RESPONSE_SEND_HEADERS,
+  //       RESPONSE_COMPLETE,
+  //   };
 
-    Response(const s_Server &server, const Request &request, const RouterResult &router);
+    Response(const s_Server &server, const Request &request);
     ~Response(void);
 
     void process();
@@ -40,18 +40,17 @@ class Response
     // Getters
     const std::string &getResponseBuffer();
 
-    ResponseState getState() const
-    {
-        return m_state;
-    }
+    // ResponseState getState() const
+    // {
+    //     return m_state;
+    // }
 
   private:
-    ResponseState m_state;
-    size_t        m_buffer_offset;
     int           m_status_code;
     std::ifstream m_file_input;
     Request       m_request;
-    RouterResult  m_router;
+    // Router        m_router;
+    RouterResult    m_router;
     std::string   m_response_buffer;
     std::string   m_body_content;
     size_t        m_content_length;

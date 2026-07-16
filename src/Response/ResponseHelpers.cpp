@@ -10,16 +10,25 @@ void Response::generateErrorBody()
 
 void Response::init_GET()
 {
-    if (m_router.m_data.empty())
+    if(m_router.m_data_type == RouterResult::FILE_PATH)
     {
-        m_status_code = m_router.m_http_code;
-        generateErrorBody();
+        std::ifstream infile(m_router.m_data.c_str(), std::ios::binary);
+        if(!infile.is_open())
+        {
+            generateErrorBody();
+            return;
+        }
+        std::stringstream buffer;
+        buffer << infile.rdbuf();
+        m_body_content = buffer.str();
+        m_content_type = get_content_type(m_router.m_data);
     }
-    else
+    else if(m_router.m_data_type == RouterResult::STRING_BUFFER)
     {
         m_body_content = m_router.m_data;
-        m_status_code = 200;
+        m_content_type = "text/html";
     }
+    m_content_length = m_body_content.size();
 }
 
 // void Response::init_DELETE()
@@ -69,7 +78,7 @@ std::string Response::getStatusMessage(int code)
         case 200:
             return "OK";
         case 201:
-            return "CREATED";
+            return "Created";
         case 204:
             return "No Content";
         case 400:
