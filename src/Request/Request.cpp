@@ -365,7 +365,7 @@ void Request::parseHeaders(void)
  */
 void Request::parseChunkedBody(void)
 {
-    while (!m_raw_buffer.empty() && m_state != COMPLETE)
+    while (!m_raw_buffer.empty() && m_state == BODY)
     {
         switch (m_chunk_state)
         {
