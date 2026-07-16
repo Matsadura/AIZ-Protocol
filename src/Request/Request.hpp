@@ -55,7 +55,7 @@ class Request
     void appendDataAndParse(const char *data, size_t length);
     void setMaxBodySize(size_t max_size);
 
-    bool isReadyForBodyParsing(bool state);
+    bool isReadyForBodyParsing(bool yes_no);
     bool isReadyForRouting(void) const;
 
     void        setError(int error_code);

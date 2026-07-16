@@ -242,6 +242,7 @@ void Request::reset(int reset_type)
     m_content_length        = 0;
     m_chunk_state           = CHUNK_SIZE;
     m_chunk_bytes_remaining = 0;
+    m_body_bytes_read       = 0;
 }
 
 /**
@@ -394,8 +395,9 @@ void Request::parseChunkedBody(void)
  */
 bool Request::parseUnchunkedBody()
 {
-    size_t body_bytes_needed = m_content_length - m_body_bytes_read; // Keep a separate counter for total bytes read
+    size_t body_bytes_needed = m_content_length - m_body_bytes_read;
     size_t bytes_to_append   = std::min(body_bytes_needed, m_raw_buffer.size());
+
     if (!validateBodySize(bytes_to_append))
         return false;
 

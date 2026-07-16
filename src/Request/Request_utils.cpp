@@ -6,10 +6,13 @@
  * @state: The current state of the request.
  * Return: True if the request is ready for body parsing, false otherwise.
  */
-bool Request::isReadyForBodyParsing(bool state)
+bool Request::isReadyForBodyParsing(bool yes_no)
 {
-    if (state == true)
+    if (yes_no == true)
+    {
         m_state = BODY;
+        return true;
+    }
     return false;
 }
 
@@ -521,15 +524,15 @@ void Request::parseContentLengthHeader(void)
  */
 bool Request::validateBodySize(size_t new_data_size)
 {
-    size_t future_size = m_body.size() + new_data_size;
+    size_t total_projected_size = m_body_bytes_read + new_data_size;
 
-    if (!m_is_chunked && future_size > m_content_length)
+    if (!m_is_chunked && total_projected_size > m_content_length)
     {
         setError(BAD_REQUEST);
         return false;
     }
 
-    if (future_size > m_max_body_size)
+    if (total_projected_size > m_max_body_size)
     {
         setError(PAYLOAD_TOO_LARGE);
         return false;
@@ -594,6 +597,8 @@ bool Request::parseChunkData(void)
                   m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_to_append));
     m_raw_buffer.erase(0, bytes_to_append);
     m_chunk_bytes_remaining -= bytes_to_append;
+
+    m_body_bytes_read += bytes_to_append;
 
     if (m_body.size() >= CHUNK_SIZE_LIMIT)
     {
