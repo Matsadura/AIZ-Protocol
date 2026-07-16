@@ -2,6 +2,40 @@
 #include <cerrno>
 
 /**
+ * Check if the request is ready for body parsing.
+ * @state: The current state of the request.
+ * Return: True if the request is ready for body parsing, false otherwise.
+ */
+bool Request::isReadyForBodyParsing(bool state)
+{
+    if (state == true)
+        m_state = BODY;
+    return false;
+}
+
+/**
+ * Check if the request is ready for routing.
+ * Return: True if the request is ready for routing, false otherwise.
+ */
+bool Request::isReadyForRouting(void) const
+{
+    if (m_state == HEADERS_COMPLETE || m_state == COMPLETE)
+        return true;
+    return false;
+}
+
+/**
+ * Consume a chunk of the request body.
+ */
+void Request::consumeBodyChunk(void)
+{
+    m_body.clear();
+
+    if (m_state == BODY_CHUNK_READY)
+        m_state = BODY;
+}
+
+/**
  * Extract the path and query components from the URI.
  */
 void Request::extractPathAndQuery(void)
