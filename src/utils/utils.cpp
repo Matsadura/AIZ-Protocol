@@ -1,5 +1,7 @@
 #include "utils.hpp"
 #include <iostream>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 /**
@@ -106,4 +108,30 @@ bool isNumeric(const std::string &str)
             return false;
     }
     return true;
+}
+
+bool string_starts_with(const std::string &bigger_string, const std::string &prefix)
+{
+    if (bigger_string.length() < prefix.length())
+    {
+        return false;
+    }
+    return std::equal(prefix.begin(), prefix.end(), bigger_string.begin());
+}
+
+bool is_file_regular(const std::string &path)
+{
+    struct stat file_info = {};
+
+    return stat(path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode);
+}
+
+bool is_file_readable(const std::string &filepath)
+{
+    return access(filepath.c_str(), R_OK) == 0;
+}
+
+bool is_file_executable(const std::string &filepath)
+{
+    return access(filepath.c_str(), X_OK) == 0;
 }
