@@ -11,7 +11,7 @@ Request::Request(void) :
     m_state(REQUEST_LINE),
     m_error_code(0),
     m_max_body_size(1024 * 1024),
-	m_body_bytes_read(0),
+    m_body_bytes_read(0),
     m_is_chunked(false),
     m_content_length(0),
     m_chunk_state(CHUNK_SIZE),
