@@ -21,7 +21,7 @@ static const char *type_str(RouterResult::Type t)
 void expect_router_result(const s_Server &server, const std::string &uri, const RouterResult &expected)
 {
     int          id     = ++g_id;
-    Router       r      = Router(server, uri, "GET");
+RouterResult     r      = Router(server, uri, "GET").get_result();
     RouterResult actual = r.get_result();
 
     if (!(actual == expected))

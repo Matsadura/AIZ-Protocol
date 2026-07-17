@@ -4,6 +4,7 @@
 #include "../Router/Router.hpp"
 #include <cerrno>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <string>
 #include <sys/stat.h>
@@ -21,43 +22,47 @@
 #define HTTP_SEE_OTHER 303
 #define HTTP_TEMPORARY_REDIRECT 307
 #define HTTP_PERMANENT_REDIRECT 308
+#define BUFFER_SIZE 64000
 
 class Response
 {
-  // public:
-  //   enum ResponseState
-  //   {
-  //       RESPONSE_INIT,
-  //       RESPONSE_SEND_HEADERS,
-  //       RESPONSE_COMPLETE,
-  //   };
+  public:
+    enum ResponseState
+    {
+        SEND_HEADER,
+        SEND_CHUNKS,
+        COMPLETE
+    };
 
-    Response(const s_Server &server, const Request &request);
+    Response(const s_Server &server, const Request &request, const RouterResult &router);
     ~Response(void);
 
-    void process();
+    void get_response();
 
     // Getters
     const std::string &getResponseBuffer();
 
-    // ResponseState getState() const
-    // {
-    //     return m_state;
-    // }
+    ResponseState getState() const
+    {
+        return m_state;
+    }
 
   private:
-    int           m_status_code;
-    std::ifstream m_file_input;
-    Request       m_request;
-    // Router        m_router;
-    RouterResult    m_router;
-    std::string   m_response_buffer;
-    std::string   m_body_content;
-    size_t        m_content_length;
-    std::string   m_content_type;
-    s_Server      m_server;
-
-    void        init_response();
+    int               m_status_code;
+    ResponseState     m_state;
+    std::ifstream     m_file_input;
+    Request           m_request;
+    RouterResult      m_router;
+    std::vector<char> m_response_buffer[64000];
+    std::vector<char> m_body_content;
+    size_t            m_content_length;
+    std::string       m_content_type;
+    s_Server          m_server;
+    size_t            m_header_size;
+    std::ifstream     m_infile;
+    size_t            m_offset;
+    
+    void        Body_builder();
     void        handle_error(int fd);
     void        header_builder();
     std::string getStatusMessage(int code);
@@ -68,4 +73,6 @@ class Response
     void        init_DELETE();
     void        init_POST();
     std::string get_content_type(const std::string &filepath);
+  std::vector<char> get_response(int written);
+
 };

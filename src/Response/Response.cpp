@@ -7,15 +7,18 @@
 #include <sstream>
 #include <string>
 
-Response::Response(const s_Server &server, const Request &request) :
+Response::Response(const s_Server &server, const Request &request, const RouterResult &router) :
     m_status_code(200),
+    m_state(SEND_HEADER),
     m_request(request),
-    // m_router(router),
+    m_router(router),
     m_content_length(0),
-    m_server(server)
+    m_server(server),
+    m_header_size(0),
+    m_offset(0)
 
 {
-    process();
+    get_response();
 }
 
 Response::~Response(void)
@@ -25,37 +28,34 @@ Response::~Response(void)
 /**
  * validate the request and prepare the response
  */
-void Response::init_response()
+void Response::Body_builder()
 {
-    if (m_request.getState() != Request::COMPLETE)
+    char *buffer;
+    if (m_router.m_data_type == RouterResult::FILE_PATH)
     {
-        m_status_code = m_request.getErrorCode();
-        generateErrorBody();
-        return;
+        m_infile.open(m_router.m_data.c_str(), std::ios::binary);
+        if (!m_infile.is_open())
+        {
+            generateErrorBody();
+            return;
+        }
+        m_infile.read(buffer, BUFFER_SIZE - m_header_size);
+        m_response_buffer->insert(m_response_buffer->end(), buffer, buffer + std::strlen(buffer));
     }
-    std::string method = m_request.getMethod();
-    std::string uri = m_request.getURI();
-    Router router(m_server, uri, method);
-    m_router = router.get_result();
-    m_status_code = m_router.m_http_code;
-    if (method == "GET")
+    else if (m_router.m_data_type == RouterResult::STRING_BUFFER)
     {
-        init_GET();
+        m_response_buffer->insert(m_response_buffer->end(), m_router.m_data.begin(), m_router.m_data.end());
     }
-    // else if (method == "DELETE")
-    // {
-    //     init_DELETE();
-    // }
-    // else if (method == "POST")
-    // {
-    //     init_POST();
-    // }
-    // if (!m_body_content.empty())
-    // {
-    //     m_content_length = m_body_content.size();
-    //     m_content_type   = get_content_type(file);
-    // }
-    // m_state = RESPONSE_SEND_HEADERS;
+    m_content_length = m_body_content.size();
+    m_state          = SEND_CHUNKS;
+}
+
+size_t get_file_length(std::string &file)
+{
+    struct stat st = {};
+    if (stat(file.c_str(), &st) == 0)
+        return st.st_size;
+    return 0;
 }
 
 /**
@@ -66,13 +66,18 @@ void Response::header_builder()
 {
     std::stringstream ss;
     ss << "HTTP/1.0 " << m_status_code << " " << getStatusMessage(m_status_code) << CRLF; // common
-    if(!m_body_content.empty())
+
+    if (m_router.m_data_type == RouterResult::REDIRECTION)
     {
-        ss << "Content-Type: " << m_content_type << CRLF;
-        ss << "Content-Length: " << m_body_content.size() << CRLF;
-        ss << CRLF;
+        ss << "Location: " << m_router.m_data << CRLF;
     }
-    ss << m_body_content;
+    ss << "Content-Type: " << m_content_type << CRLF;
+    ss << "Content-Length: " << m_content_length << CRLF;
+    ss << CRLF;
+    std::string str = ss.str();
+    m_response_buffer->insert(m_response_buffer->end(), str.begin(), str.end());
+    m_header_size = str.size();
+    m_state       = SEND_CHUNKS;
 }
 
 // std::string Response::toHex(size_t size)
@@ -82,9 +87,34 @@ void Response::header_builder()
 //     ss << std::hex << size;
 //     return ss.str();
 // }
-
-void Response::process()
+void Response::fill_buffer()
 {
-    init_response();
-    header_builder();
+    m_response_buffer->erase(m_response_buffer->begin(), m_response_buffer->begin() + m_offset);
+    if(m_response_buffer->empty())
+        
+}
+
+std::vector<char> Response::get_response(size_t written)
+{
+    if (m_status_code == SEND_HEADER)
+    {
+        m_status_code  = m_router.m_http_code;
+        m_content_type = get_content_type(m_router.m_data);
+        if (m_router.m_data_type == RouterResult::FILE_PATH)
+            m_content_length = get_file_length(m_router.m_data);
+        else if (m_router.m_data_type == RouterResult::STRING_BUFFER)
+            m_content_length = m_router.m_data.length();
+        else
+            m_content_length = 0;
+        header_builder();
+        Body_builder(); // fills the body content
+    }
+    else if (m_status_code == SEND_CHUNKS)
+    {
+        m_offset = written;
+        fill_buffer();
+    }
+    else
+    {
+    }
 }
