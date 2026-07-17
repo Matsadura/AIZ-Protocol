@@ -32,7 +32,9 @@ class Request
     {
         REQUEST_LINE,
         HEADERS,
+        HEADERS_COMPLETE,
         BODY,
+        BODY_CHUNK_READY,
         COMPLETE,
         ERROR
     };
@@ -53,6 +55,9 @@ class Request
     void appendDataAndParse(const char *data, size_t length);
     void setMaxBodySize(size_t max_size);
 
+    bool isReadyForBodyParsing(bool yes_no);
+    bool isReadyForRouting(void) const;
+
     void        setError(int error_code);
     ParserState getState(void) const;
     int         getErrorCode(void) const;
@@ -70,7 +75,11 @@ class Request
     const std::vector<char>           &getBody(void) const;
     const std::string                 &getRawBuffer(void) const;
 
+    void consumeBodyChunk();
+
   private:
+    static const size_t CHUNK_SIZE_LIMIT = 64 * 1024;
+
     ParserState m_state;
     std::string m_raw_buffer;
     int         m_error_code;
@@ -83,6 +92,8 @@ class Request
     std::string                        m_version;
     std::map<std::string, std::string> m_headers;
     std::vector<char>                  m_body;
+
+    size_t m_body_bytes_read;
 
     bool   m_is_chunked;
     size_t m_content_length;
