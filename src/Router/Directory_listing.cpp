@@ -1,4 +1,5 @@
 #include "Router.hpp"
+#include "RouterResource.hpp"
 
 bool comp_name(const std::pair<bool, std::string> &a, const std::pair<bool, std::string> &b)
 {
@@ -59,7 +60,7 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
 
         struct stat sb     = {};
         bool        is_dir = false;
-        if (stat(join_path(dir_path, name).c_str(), &sb) == 0)
+        if (stat(RouterResource::join_path(dir_path, name).c_str(), &sb) == 0)
             is_dir = S_ISDIR(sb.st_mode);
 
         entries.push_back(std::make_pair(is_dir, name));
