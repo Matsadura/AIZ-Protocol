@@ -8,9 +8,8 @@
 #include <sstream>
 #include <string>
 
-Response::Response(const Request &request, const RouterResult &router) :
+Response::Response(const RouterResult &router) :
     m_router(router),
-    m_request(request),
     m_state(STREAMING),
     m_body_type(BODY_NONE),
     m_status_code(m_router.m_http_code),
