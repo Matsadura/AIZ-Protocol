@@ -29,8 +29,7 @@ class Response
   public:
     enum State
     {
-        SEND_HEADER,
-        SEND_BODY,
+        STREAMING,
         COMPLETE
     };
 

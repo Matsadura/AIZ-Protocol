@@ -11,7 +11,7 @@
 Response::Response(const Request &request, const RouterResult &router) :
     m_router(router),
     m_request(request),
-    m_state(SEND_HEADER),
+    m_state(STREAMING),
     m_body_type(BODY_NONE),
     m_status_code(m_router.m_http_code),
     m_content_length(0),
@@ -119,19 +119,19 @@ void Response::FillBuffer()
     {
         m_response_buffer.insert(m_response_buffer.end(), m_body.begin(), m_body.end());
     }
-    else if(m_body_type == BODY_FILE)
+    else if (m_body_type == BODY_FILE)
     {
         read_file();
     }
 }
 
-void    Response::read_file()
+void Response::read_file()
 {
-    char buff[BUFFER_SIZE];
+    char   buff[BUFFER_SIZE];
     size_t remaining = BUFFER_SIZE - m_response_buffer.size();
-    m_file.read(buff,  static_cast<std::streamsize>(remaining));
+    m_file.read(buff, static_cast<std::streamsize>(remaining));
     size_t read = static_cast<size_t>(m_file.gcount());
-    if(!read)
+    if (!read)
     {
         m_state = COMPLETE;
         m_file.close();
@@ -145,14 +145,13 @@ const std::vector<char> &Response::getResponseBuffer()
     return m_response_buffer;
 }
 
-
-void    Response::consume(size_t written)
+void Response::consume(size_t written)
 {
-    if(m_state == COMPLETE)
+    if (m_state == COMPLETE)
         return;
     written = std::min(written, m_response_buffer.size());
     m_response_buffer.erase(m_response_buffer.begin(), m_response_buffer.begin() + static_cast<int>(written));
-    if(m_response_buffer.empty())
+    if (m_response_buffer.empty())
     {
         if (m_body_type == BODY_STRING || m_body_type == BODY_NONE)
             m_state = COMPLETE;
@@ -161,7 +160,7 @@ void    Response::consume(size_t written)
     }
 }
 
-bool    Response::isFinished() const
+bool Response::isFinished() const
 {
     return (m_state == COMPLETE);
 }
