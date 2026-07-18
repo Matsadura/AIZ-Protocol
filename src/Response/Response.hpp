@@ -40,18 +40,12 @@ class Response
         BODY_FILE
     };
 
-    Response(const Request &request, const RouterResult &router);
+    Response(const RouterResult &router);
     ~Response(void);
-
-    State getState() const
-    {
-        return m_state;
-    }
 
   private:
     // params
     RouterResult m_router;
-    Request      m_request;
 
     State    m_state;
     BodyType m_body_type;
@@ -72,9 +66,10 @@ class Response
     std::vector<char> m_response_buffer;
     size_t            m_buffer_offset;
 
-    const std::vector<char> &getResponseBuffer();
-    bool                     isFinished() const;
-    void                     consume(size_t written);
+    public:
+      const std::vector<char> &getResponseBuffer();
+      bool                     isFinished() const;
+      void                     consume(size_t written);
 
   private:
     void        buildHeader();
