@@ -11,6 +11,7 @@ Request::Request(void) :
     m_state(REQUEST_LINE),
     m_error_code(0),
     m_max_body_size(1024 * 1024),
+    m_body_bytes_read(0),
     m_is_chunked(false),
     m_content_length(0),
     m_chunk_state(CHUNK_SIZE),
@@ -34,6 +35,7 @@ Request::Request(const Request &other) :
     m_version(other.m_version),
     m_headers(other.m_headers),
     m_body(other.m_body),
+    m_body_bytes_read(other.m_body_bytes_read),
     m_is_chunked(other.m_is_chunked),
     m_content_length(other.m_content_length),
     m_chunk_state(other.m_chunk_state),
@@ -240,6 +242,7 @@ void Request::reset(int reset_type)
     m_content_length        = 0;
     m_chunk_state           = CHUNK_SIZE;
     m_chunk_bytes_remaining = 0;
+    m_body_bytes_read       = 0;
 }
 
 /**
@@ -353,7 +356,7 @@ void Request::parseHeaders(void)
         return;
 
     if (m_is_chunked || has_content_length || has_transfer_encoding)
-        m_state = BODY;
+        m_state = HEADERS_COMPLETE;
     else
         m_state = COMPLETE;
 }
@@ -363,7 +366,7 @@ void Request::parseHeaders(void)
  */
 void Request::parseChunkedBody(void)
 {
-    while (!m_raw_buffer.empty() && m_state != COMPLETE)
+    while (!m_raw_buffer.empty() && m_state == BODY)
     {
         switch (m_chunk_state)
         {
@@ -392,22 +395,36 @@ void Request::parseChunkedBody(void)
  */
 bool Request::parseUnchunkedBody()
 {
-    size_t body_bytes_needed = m_content_length - m_body.size();
+    size_t body_bytes_needed = m_content_length - m_body_bytes_read;
     size_t bytes_to_append   = std::min(body_bytes_needed, m_raw_buffer.size());
+
     if (!validateBodySize(bytes_to_append))
         return false;
 
-    if (m_raw_buffer.size() < body_bytes_needed)
+    size_t available_space = CHUNK_SIZE_LIMIT - m_body.size();
+    if (bytes_to_append > available_space)
     {
-        m_body.insert(m_body.end(), m_raw_buffer.begin(), m_raw_buffer.end());
-        m_raw_buffer.clear();
-        return false;
+        bytes_to_append = available_space;
     }
 
     m_body.insert(m_body.end(), m_raw_buffer.begin(),
-                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(body_bytes_needed));
-    m_raw_buffer.erase(0, body_bytes_needed);
-    return (true);
+                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_to_append));
+    m_raw_buffer.erase(0, bytes_to_append);
+    m_body_bytes_read += bytes_to_append;
+
+    if (m_body.size() >= CHUNK_SIZE_LIMIT)
+    {
+        m_state = BODY_CHUNK_READY;
+        return false;
+    }
+
+    if (m_body_bytes_read >= m_content_length)
+    {
+        m_state = COMPLETE;
+        return true;
+    }
+
+    return false;
 }
 
 /**

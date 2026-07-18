@@ -27,52 +27,65 @@
 class Response
 {
   public:
-    enum ResponseState
+    enum State
     {
         SEND_HEADER,
-        SEND_CHUNKS,
+        SEND_BODY,
         COMPLETE
     };
 
-    Response(const s_Server &server, const Request &request, const RouterResult &router);
+    enum BodyType
+    {
+        BODY_NONE,
+        BODY_STRING,
+        BODY_FILE
+    };
+
+    Response(const Request &request, const RouterResult &router);
     ~Response(void);
 
-    void get_response();
-
-    // Getters
-    const std::string &getResponseBuffer();
-
-    ResponseState getState() const
+    State getState() const
     {
         return m_state;
     }
 
   private:
-    int               m_status_code;
-    ResponseState     m_state;
-    std::ifstream     m_file_input;
-    Request           m_request;
-    RouterResult      m_router;
-    std::vector<char> m_response_buffer[64000];
-    std::vector<char> m_body_content;
-    size_t            m_content_length;
-    std::string       m_content_type;
-    s_Server          m_server;
-    size_t            m_header_size;
-    std::ifstream     m_infile;
-    size_t            m_offset;
-    
-    void        Body_builder();
-    void        handle_error(int fd);
-    void        header_builder();
-    std::string getStatusMessage(int code);
-    void        chunks_handler();
-    std::string toHex(size_t size);
-    void        generateErrorBody();
-    void        init_GET();
-    void        init_DELETE();
-    void        init_POST();
-    std::string get_content_type(const std::string &filepath);
-  std::vector<char> get_response(int written);
+    // params
+    RouterResult m_router;
+    Request      m_request;
 
+    State    m_state;
+    BodyType m_body_type;
+
+    // HTTP metadata
+    int         m_status_code;
+    std::string m_content_type;
+    size_t      m_content_length;
+    std::string m_location;
+    //  Header
+    std::vector<char> m_header;
+    size_t            m_header_size;
+    // String body
+    std::vector<char> m_body;
+    // File body
+    std::ifstream m_file;
+    // response buffer
+    std::vector<char> m_response_buffer;
+    size_t            m_buffer_offset;
+
+    const std::vector<char> &getResponseBuffer();
+    bool                     isFinished() const;
+    void                     consume(size_t written);
+
+  private:
+    void        buildHeader();
+    void        read_file();
+    std::string getStatusMessage(int code);
+    void        generateErrorBody();
+
+    std::string get_content_type(const std::string &filepath);
+    void        prepare_response();
+    void        FillBuffer();
 };
+
+size_t get_file_length(std::string &file);

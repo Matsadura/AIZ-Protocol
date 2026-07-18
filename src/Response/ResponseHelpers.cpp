@@ -4,7 +4,7 @@ void Response::generateErrorBody()
 {
     std::stringstream ss;
     ss << "<h1>" << m_status_code << " " << getStatusMessage(m_status_code) << "</h1>";
-    m_body_content = ss.str();
+    std::string ss.str();
     m_content_length = m_body_content.size();
 }
 
@@ -111,6 +111,16 @@ std::string Response::getStatusMessage(int code)
             return "Internal Server Error";
     }
 }
+
+
+size_t get_file_length(std::string &file)
+{
+    struct stat st = {};
+    if (stat(file.c_str(), &st) == 0)
+        return st.st_size;
+    return 0;
+}
+
 
 std::string Response::get_content_type(const std::string &filepath)
 {

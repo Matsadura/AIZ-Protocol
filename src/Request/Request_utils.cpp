@@ -2,6 +2,43 @@
 #include <cerrno>
 
 /**
+ * Check if the request is ready for body parsing.
+ * @state: The current state of the request.
+ * Return: True if the request is ready for body parsing, false otherwise.
+ */
+bool Request::isReadyForBodyParsing(bool yes_no)
+{
+    if (yes_no == true)
+    {
+        m_state = BODY;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Check if the request is ready for routing.
+ * Return: True if the request is ready for routing, false otherwise.
+ */
+bool Request::isReadyForRouting(void) const
+{
+    if (m_state == HEADERS_COMPLETE || m_state == COMPLETE)
+        return true;
+    return false;
+}
+
+/**
+ * Consume a chunk of the request body.
+ */
+void Request::consumeBodyChunk(void)
+{
+    m_body.clear();
+
+    if (m_state == BODY_CHUNK_READY)
+        m_state = BODY;
+}
+
+/**
  * Extract the path and query components from the URI.
  */
 void Request::extractPathAndQuery(void)
@@ -487,15 +524,15 @@ void Request::parseContentLengthHeader(void)
  */
 bool Request::validateBodySize(size_t new_data_size)
 {
-    size_t future_size = m_body.size() + new_data_size;
+    size_t total_projected_size = m_body_bytes_read + new_data_size;
 
-    if (!m_is_chunked && future_size > m_content_length)
+    if (!m_is_chunked && total_projected_size > m_content_length)
     {
         setError(BAD_REQUEST);
         return false;
     }
 
-    if (future_size > m_max_body_size)
+    if (total_projected_size > m_max_body_size)
     {
         setError(PAYLOAD_TOO_LARGE);
         return false;
@@ -552,10 +589,22 @@ bool Request::parseChunkData(void)
     if (!validateBodySize(bytes_to_append))
         return false;
 
+    size_t available_space = CHUNK_SIZE_LIMIT - m_body.size();
+    if (bytes_to_append > available_space)
+        bytes_to_append = available_space;
+
     m_body.insert(m_body.end(), m_raw_buffer.begin(),
                   m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_to_append));
     m_raw_buffer.erase(0, bytes_to_append);
     m_chunk_bytes_remaining -= bytes_to_append;
+
+    m_body_bytes_read += bytes_to_append;
+
+    if (m_body.size() >= CHUNK_SIZE_LIMIT)
+    {
+        m_state = BODY_CHUNK_READY;
+        return false;
+    }
 
     if (m_chunk_bytes_remaining == 0)
         m_chunk_state = CHUNK_DATA_CRLF;
