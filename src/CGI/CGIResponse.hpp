@@ -1,4 +1,6 @@
 #pragma once
+#include "../../src/core/Common.h"
+#include <map>
 
 class CGIResponse
 {
@@ -14,6 +16,11 @@ class CGIResponse
     void        appendCgiData(const char *data, size_t length);
     bool        parseCgiHeaders();
     std::string getOutputChunk();
+
+    void setCgiState(CgiState state);
+    CgiState getCgiState() const;
+
+    void translateToHttp(std::map<std::string, std::string> &cgi_headers);
 
   private:
     CgiState          m_cgi_state;
