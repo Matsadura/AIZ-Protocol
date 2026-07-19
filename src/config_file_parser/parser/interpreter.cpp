@@ -54,10 +54,6 @@ s_Server Interpreter::parseServer(const Directive &directive)
     std::vector<Directive> DirectiveChildren;
 
     DirectiveChildren = directive.get_children();
-<<<<<<< HEAD
-=======
-    int portCount     = 0;
->>>>>>> d7f8dc8 ([FIX] format)
     for (size_t i = 0; i < DirectiveChildren.size(); i++)
     {
         if (DirectiveChildren[i].get_key() == "listen")
@@ -147,11 +143,7 @@ void Interpreter::handleport(const std::string &value, std::map<std::string, std
         if (value.find('.') != std::string::npos)
         {
             ports[value].push_back(80);
-<<<<<<< HEAD
-            ; // default port for IP addresses
-=======
             // default port for IP addresses
->>>>>>> d7f8dc8 ([FIX] format)
         }
         else //   case = listen 8080;
         {
