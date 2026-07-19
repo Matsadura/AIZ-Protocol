@@ -30,6 +30,11 @@ int CGIResponse::getErrorCode() const
     return m_error_code;
 }
 
+std::vector<char> &CGIResponse::getBodyBuffer()
+{
+    return m_body_buffer;
+}
+
 /**
  * appendCgiData - Appends CGI data and formats it immediately into HTTP chunks.
  * @data: A pointer to the data to be appended.
@@ -206,6 +211,7 @@ bool CGIResponse::parseCgiHeaders()
         m_body_buffer.push_back('\n');
     }
 
+    m_cgi_header_buffer.clear();
     return true;
 }
 

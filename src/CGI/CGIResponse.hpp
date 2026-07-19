@@ -18,14 +18,14 @@ class CGIResponse
     void              appendCgiData(const char *data, size_t length);
     bool              parseCgiHeaders();
     void              appendTerminalChunk();
-    std::vector<char> getBodyBuffer();
+    std::vector<char>& getBodyBuffer();
 
     void     setCgiState(CgiState state);
     CgiState getCgiState() const;
     int      getErrorCode() const;
     void     generateErrorResponse(int error_code);
 
-    void consumeBodyChunk(size_t Length);
+    void consumeBodyChunk(size_t length);
 
     bool isLocalRedirect() const;
 
