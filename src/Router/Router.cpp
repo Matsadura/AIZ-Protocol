@@ -200,3 +200,77 @@ RouterResult Router::handle_post()
     router_log_helper(m_uri, loc, disk_path, "Path is writable for POST", 200);
     return RouterResult(200, disk_path, RouterResult::FILE_PATH);
 }
+
+struct CgiMetaData
+{
+    bool        is_cgi;
+    std::string script_path;
+    std::string path_info;
+    std::string interpreter_path;
+
+    CgiMetaData() : is_cgi(false)
+    {
+    }
+
+    CgiMetaData(bool is_cgi_val, const std::string &script, const std::string &info, const std::string &interpreter) :
+        is_cgi(is_cgi_val), script_path(script), path_info(info), interpreter_path(interpreter)
+    {
+    }
+};
+
+CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
+{
+    const s_Location *location = RouterResource::get_best_matched_location(server, req.getPath());
+
+    if (!location || location->CGIhandlers.empty() || location->root.empty())
+    {
+        return CgiMetaData();
+    }
+
+    std::string disk_path = RouterResource::join_path(location->root, req.getPath().substr(location->path.size()));
+    std::string script_path;
+    std::string path_info;
+
+    for (std::size_t i = 0; i <= disk_path.size(); i++)
+    {
+        if (i == disk_path.size() || disk_path[i] == '/')
+        {
+            std::string current_path = disk_path.substr(0, i);
+            // TODO: Not save! location->root will be counted going above root will happen anyway
+            if (!RouterResource::path_traverse_is_safe(current_path))
+            {
+                return CgiMetaData();
+            }
+            if (is_file_regular(current_path))
+            {
+                script_path = current_path;
+                if (i < disk_path.size())
+                {
+                    path_info = disk_path.substr(i);
+                }
+                break;
+            }
+        }
+    }
+
+    if (script_path.empty())
+    {
+        return CgiMetaData();
+    }
+
+    std::size_t dot_pos   = script_path.find_last_of('.');
+    std::size_t slash_pos = script_path.find_last_of('/');
+
+    if (dot_pos != std::string::npos && (slash_pos == std::string::npos || dot_pos > slash_pos))
+    {
+        std::string                                        ext = script_path.substr(dot_pos);
+        std::map<std::string, std::string>::const_iterator it  = location->CGIhandlers.find(ext);
+
+        if (it != location->CGIhandlers.end())
+        {
+            return CgiMetaData(true, script_path, path_info, it->second);
+        }
+    }
+
+    return CgiMetaData();
+}
