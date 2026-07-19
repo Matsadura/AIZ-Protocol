@@ -41,7 +41,6 @@ std::string Response::getStatusMessage(int code)
     }
 }
 
-
 size_t get_file_length(std::string &file)
 {
     struct stat st = {};
@@ -50,12 +49,11 @@ size_t get_file_length(std::string &file)
     return 0;
 }
 
-
 std::string Response::get_content_type(const std::string &filepath)
 {
-    if(m_router.m_data_type == RouterResult::STRING_BUFFER)
+    if (m_router.m_data_type == RouterResult::STRING_BUFFER)
         return "text/html";
-    else if(m_router.m_data_type == RouterResult::REDIRECTION)
+    else if (m_router.m_data_type == RouterResult::REDIRECTION)
         return "";
     size_t dot_pos = filepath.find_last_of('.');
     if (dot_pos == std::string::npos)

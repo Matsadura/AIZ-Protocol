@@ -66,10 +66,10 @@ class Response
     std::vector<char> m_response_buffer;
     size_t            m_buffer_offset;
 
-    public:
-      const std::vector<char> &getResponseBuffer();
-      bool                     isFinished() const;
-      void                     consume(size_t written);
+  public:
+    const std::vector<char> &getResponseBuffer();
+    bool                     isFinished() const;
+    void                     consume(size_t written);
 
   private:
     void        buildHeader();
