@@ -57,7 +57,10 @@ void CGIResponse::appendCgiData(const char *data, size_t length)
     {
         m_cgi_header_buffer.append(data, length);
         if (parseCgiHeaders())
-            m_cgi_state = CGI_STREAMING_BODY;
+        {
+            if (m_error_code == 0)
+                m_cgi_state = CGI_STREAMING_BODY;
+        }
     }
     else if (m_cgi_state == CGI_STREAMING_BODY)
     {
@@ -142,8 +145,10 @@ bool CGIResponse::parseCgiHeaders()
     {
         std::string line = *it;
 
-        if (!line.empty() && line[line.length() - 1] == '\r')
+        while (!line.empty() && (line[line.length() - 1] == '\r' || line[line.length() - 1] == '\n'))
+        {
             line.erase(line.length() - 1);
+        }
 
         if (line.empty())
             continue;
@@ -170,9 +175,9 @@ bool CGIResponse::parseCgiHeaders()
             return true;
         }
 
-        trim(key);
-        trim(value);
-        std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+        key   = trim(key);
+        value = trim(value);
+        key   = toLower(key);
 
         if (!isValidHeaderName(key) || !isValidHeaderValue(value))
         {
