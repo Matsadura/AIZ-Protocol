@@ -1,0 +1,5 @@
+HTTP/1.0 200
+Content-Type: text/html
+Content-Length: 37
+
+/tmp/webserv_test/www/html/about.html
