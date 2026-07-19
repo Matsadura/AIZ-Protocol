@@ -30,8 +30,8 @@ class CGI
 
     void execute(const Request &req, const std::string &scriptPath);
 
-    int    getReadFd() const;
-    int    getWriteFd() const;
+    int    getInFd() const;
+    int    getOutFd() const;
     pid_t  getPid() const;
     bool   isRunning() const;
     bool   isTimeout(time_t start_time, int timeout) const;

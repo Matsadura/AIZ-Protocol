@@ -10,15 +10,17 @@ CGI::CGI() : m_pipe_in(), m_pipe_out(), m_pid(-1), m_start_time(0)
 
 CGI::~CGI()
 {
-    waitAndClean();
+    // BUG: This will cause many problems when copying this object
+    // Let the connection to handle CGI resources
+    // waitAndClean();
 }
 
-int CGI::getReadFd() const
+int CGI::getOutFd() const
 {
     return m_pipe_out[0];
 }
 
-int CGI::getWriteFd() const
+int CGI::getInFd() const
 {
     return m_pipe_in[1];
 }
@@ -92,6 +94,7 @@ void CGI::execute(const Request &req, const std::string &scriptPath)
             abort("fcntl F_SETFL");
         if (fcntl(m_pipe_in[1], F_SETFD, FD_CLOEXEC) == -1 || fcntl(m_pipe_out[0], F_SETFD, FD_CLOEXEC) == -1)
             abort("fcntl F_SETFD");
+        LOG_INFO("CGI") << "RUN=\"" << scriptPath << "\"\n";
     }
 }
 
