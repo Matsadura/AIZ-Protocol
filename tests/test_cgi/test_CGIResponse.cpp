@@ -27,7 +27,7 @@ void test_basic_streaming()
     assert(output.find("Content-Type: text/html\r\n") != std::string::npos);
     assert(output.find("Transfer-encoding: chunked\r\n") != std::string::npos);
 
-    // 4. Verify HTTP chunk formatting (12 bytes in hex is 'c')
+    // 4. Verify HTTP chunk formatting (12 bytes in hex is '12')
     assert(output.find("12\r\n<html>Hello</html>\r\n") != std::string::npos);
 
     std::cout << "[OK] Basic streaming passed." << std::endl;
@@ -64,6 +64,27 @@ void test_client_redirect()
     std::cout << "[OK] Client redirect (302 Found) parsed correctly." << std::endl;
 }
 
+void test_case_insensitive_headers()
+{
+    print_test_name("RFC Compliance: Case-Insensitive Headers");
+    CGIResponse cgi;
+
+    // Send wildly capitalized headers
+    std::string mock_output = "cOnTeNt-TyPe: text/css\r\nsTaTuS: 201 Created\r\n\r\n";
+    cgi.appendCgiData(mock_output.c_str(), mock_output.length());
+
+    assert(cgi.getErrorCode() == 0);
+
+    const std::vector<char> &buffer = cgi.getBodyBuffer();
+    std::string              output(buffer.begin(), buffer.end());
+
+    // Our parser should normalize these to standard HTTP headers
+    assert(output.find("HTTP/1.1 201 Created\r\n") != std::string::npos);
+    assert(output.find("Content-Type: text/css\r\n") != std::string::npos);
+
+    std::cout << "[OK] Case-insensitive headers parsed correctly." << std::endl;
+}
+
 void test_invalid_header_space_before_colon()
 {
     print_test_name("RFC Violation: Space Before Colon");
@@ -95,6 +116,34 @@ void test_continuation_lines_rejected()
     assert(cgi.getErrorCode() == 502);
 
     std::cout << "[OK] Continuation lines properly rejected (502)." << std::endl;
+}
+
+void test_duplicate_headers_rejected()
+{
+    print_test_name("RFC Violation: Duplicate CGI Headers");
+    CGIResponse cgi;
+
+    // A script MUST NOT send the same CGI header field more than once
+    std::string mock_output = "Content-Type: text/html\r\nContent-Type: text/plain\r\n\r\n";
+    cgi.appendCgiData(mock_output.c_str(), mock_output.length());
+
+    assert(cgi.getErrorCode() == 502);
+
+    std::cout << "[OK] Duplicate headers properly rejected (502)." << std::endl;
+}
+
+void test_missing_headers_rejected()
+{
+    print_test_name("RFC Violation: Missing Headers");
+    CGIResponse cgi;
+
+    // A script MUST return at least one valid CGI header
+    std::string mock_output = "\r\n\r\n";
+    cgi.appendCgiData(mock_output.c_str(), mock_output.length());
+
+    assert(cgi.getErrorCode() == 502);
+
+    std::cout << "[OK] Missing headers properly rejected (502)." << std::endl;
 }
 
 void test_buffer_full_backpressure()
@@ -149,6 +198,39 @@ void test_terminal_chunk()
     std::cout << "[OK] Terminal chunk successfully appended." << std::endl;
 }
 
+void test_generate_error_response()
+{
+    print_test_name("Explicit Error Response Generation");
+    CGIResponse cgi;
+
+    // 1. Send valid headers to get the state into CGI_STREAMING_BODY
+    std::string mock_output = "Content-Type: text/plain\r\n\r\n";
+    cgi.appendCgiData(mock_output.c_str(), mock_output.length());
+
+    // 2. Send some partial body data (to simulate a crash mid-stream)
+    std::string partial_body = "This is a partial video stream...";
+    cgi.appendCgiData(partial_body.c_str(), partial_body.length());
+
+    // 3. Force an error (e.g., 504 Gateway Timeout if the multiplexer detects a hang)
+    cgi.generateErrorResponse(504);
+
+    // 4. Validate the state is locked and error code is set
+    assert(cgi.getErrorCode() == 504);
+    assert(cgi.getCgiState() == CGIResponse::CGI_COMPLETE);
+
+    // 5. Extract the output
+    const std::vector<char> &buffer = cgi.getBodyBuffer();
+    std::string              output(buffer.begin(), buffer.end());
+
+    // 6. Verify the partial body data was wiped out and replaced with the HTTP error
+    assert(output.find("HTTP/1.1 504 Error\r\n") != std::string::npos);
+    assert(output.find("Content-Type: text/plain\r\n") != std::string::npos);
+    assert(output.find("Content-Length: 0\r\n") != std::string::npos);
+    assert(output.find(partial_body) == std::string::npos); // Ensures the junk data is gone
+
+    std::cout << "[OK] Error response generation and buffer clearing passed." << std::endl;
+}
+
 int main()
 {
     std::cout << "======================================" << std::endl;
@@ -158,10 +240,14 @@ int main()
     test_basic_streaming();
     test_local_redirect();
     test_client_redirect();
+    test_case_insensitive_headers();
     test_invalid_header_space_before_colon();
     test_continuation_lines_rejected();
+    test_duplicate_headers_rejected();
+    test_missing_headers_rejected();
     test_buffer_full_backpressure();
     test_terminal_chunk();
+    test_generate_error_response();
 
     std::cout << "\n======================================" << std::endl;
     std::cout << " ALL TESTS PASSED SUCCESSFULLY! " << std::endl;
