@@ -113,7 +113,6 @@ bool CGIResponse::parseCgiHeaders()
 
     m_body_buffer.insert(m_body_buffer.end(), leftover_body.begin(), leftover_body.end());
 
-    // NOTE: Keep your split function intact in utils.cpp
     std::vector<std::string>           header_lines = split(headers_part, '\n');
     std::map<std::string, std::string> parsed_cgi_headers;
 
@@ -152,9 +151,9 @@ bool CGIResponse::parseCgiHeaders()
             return true;
         }
 
-        // Safely trim and validate
         trim(key);
         trim(value);
+        // RULE: case insensitive field names, but we will store them in lowercase for consistency
         std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 
         if (!isValidHeaderName(key) || !isValidHeaderValue(value))
