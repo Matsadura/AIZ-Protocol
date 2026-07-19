@@ -25,9 +25,9 @@ struct s_Location
     std::map<std::string, std::string> CGIhandlers;
 
     // redirect
-    int redirect_code;
+    int         redirect_code;
     std::string redirect_path;
-    size_t max_body_size;
+    size_t      max_body_size;
 
     bool autoindex;
 };
@@ -35,13 +35,13 @@ struct s_Location
 struct s_Server
 {
     std::map<std::string, std::vector<int> > ports; // NOLINT
-    size_t max_body_size;
+    size_t                                   max_body_size;
 
     std::string root;
     std::string index;
     std::string server_name;
     // Locations
-    std::vector<s_Location> locations;
+    std::vector<s_Location>    locations;
     std::map<int, std::string> error_page;
 };
 
@@ -57,14 +57,14 @@ class Interpreter
     std::vector<s_Server> getServers() const;
 
   private:
-    s_Server parseServer(const Directive &directive);
+    s_Server   parseServer(const Directive &directive);
     s_Location handleLocation(const std::vector<Directive> &DirectiveChildren, s_Server &server,
                               const std::string &path);
-    void handleport(const std::string &value, std::map<std::string, std::vector<int> > &ports); // NOLINT
+    void       handleport(const std::string &value, std::map<std::string, std::vector<int> > &ports); // NOLINT
     std::vector<std::string> handleMethods(const std::vector<std::string> &Methods);
-    bool handleAutoindex(const std::string &value);
-    int handleRedirectCode(const std::string &code);
-    void handleCGI(const std::vector<std::string> &cgi_values, std::map<std::string, std::string> &cgihandler);
+    bool                     handleAutoindex(const std::string &value);
+    int                      handleRedirectCode(const std::string &code);
+    void   handleCGI(const std::vector<std::string> &cgi_values, std::map<std::string, std::string> &cgihandler);
     size_t handlemaxbodysize(const std::vector<std::string> &values);
-    void handleErrorPage(const std::vector<std::string> &values, std::map<int, std::string> &error_page);
+    void   handleErrorPage(const std::vector<std::string> &values, std::map<int, std::string> &error_page);
 };

@@ -54,6 +54,10 @@ s_Server Interpreter::parseServer(const Directive &directive)
     std::vector<Directive> DirectiveChildren;
 
     DirectiveChildren = directive.get_children();
+<<<<<<< HEAD
+=======
+    int portCount     = 0;
+>>>>>>> d7f8dc8 ([FIX] format)
     for (size_t i = 0; i < DirectiveChildren.size(); i++)
     {
         if (DirectiveChildren[i].get_key() == "listen")
@@ -104,7 +108,7 @@ void Interpreter::handleErrorPage(const std::vector<std::string> &values, std::m
         throw std::runtime_error("Error page directive must have exactly two values: error code and page path");
     if (values[0].find('.') != std::string::npos)
         throw std::runtime_error("Error code must be an integer");
-    char *rest;
+    char  *rest;
     double error_code = strtod(values[0].c_str(), &rest);
     if (*rest)
         throw std::runtime_error("Error code must be a number");
@@ -130,7 +134,7 @@ void Interpreter::handleport(const std::string &value, std::map<std::string, std
         std::string port_str = value.substr(pos + 1);
         if (port_str.find('.') != std::string::npos)
             throw std::runtime_error("Port must be an integer");
-        char *rest;
+        char  *rest;
         double num = strtod(port_str.c_str(), &rest);
         if (*rest != '\0')
             throw std::runtime_error("Port must be a number");
@@ -143,9 +147,13 @@ void Interpreter::handleport(const std::string &value, std::map<std::string, std
         if (value.find('.') != std::string::npos)
         {
             ports[value].push_back(80);
+<<<<<<< HEAD
             ; // default port for IP addresses
+=======
+            // default port for IP addresses
+>>>>>>> d7f8dc8 ([FIX] format)
         }
-        else  //   case = listen 8080;
+        else //   case = listen 8080;
         {
             char *rest;
             if (value.find('.') != std::string::npos)
@@ -170,7 +178,7 @@ size_t Interpreter::handlemaxbodysize(const std::vector<std::string> &values)
 {
     if (values.empty() || values.size() > 1)
         throw std::runtime_error("max_body_size directive must have exactly one value");
-    char *rest;
+    char  *rest;
     double num = std::strtod(values[0].c_str(), &rest);
     if (num < 0)
         throw std::runtime_error("max_body_size must be a non-negative number");
@@ -307,7 +315,7 @@ int Interpreter::handleRedirectCode(const std::string &code)
     if (code.empty())
         throw std::runtime_error("Redirect code is empty");
 
-    char *rest;
+    char  *rest;
     double num = strtod(code.c_str(), &rest);
     if (*rest != '\0')
         throw std::runtime_error("Redirect code must be a number");
