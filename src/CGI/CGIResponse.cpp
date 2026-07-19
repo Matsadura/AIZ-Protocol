@@ -35,6 +35,11 @@ std::vector<char> &CGIResponse::getBodyBuffer()
     return m_body_buffer;
 }
 
+bool CGIResponse::isBufferFull() const
+{
+    return m_body_buffer.size() >= CHUNK_SIZE_LIMIT;
+}
+
 /**
  * appendCgiData - Appends CGI data and formats it immediately into HTTP chunks.
  * @data: A pointer to the data to be appended.

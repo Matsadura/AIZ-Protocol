@@ -15,10 +15,12 @@ class CGIResponse
         CGI_COMPLETE
     };
 
-    void              appendCgiData(const char *data, size_t length);
-    bool              parseCgiHeaders();
-    void              appendTerminalChunk();
-    std::vector<char>& getBodyBuffer();
+    void               appendCgiData(const char *data, size_t length);
+    bool               parseCgiHeaders();
+    void               appendTerminalChunk();
+    std::vector<char> &getBodyBuffer();
+
+    bool isBufferFull() const;
 
     void     setCgiState(CgiState state);
     CgiState getCgiState() const;
@@ -35,6 +37,8 @@ class CGIResponse
     ~CGIResponse();
 
   private:
+    static const size_t CHUNK_SIZE_LIMIT = 64 * 1024;
+
     CgiState          m_cgi_state;
     std::string       m_cgi_header_buffer;
     std::vector<char> m_body_buffer;
