@@ -1,4 +1,5 @@
 #include "CGIResponse.hpp"
+#include <sstream>
 
 CGIResponse::CGIResponse() : m_cgi_state(CGI_IDLE), m_is_local_redirect(false)
 {
@@ -28,6 +29,41 @@ void CGIResponse::appendCgiData(const char *data, size_t length)
     }
     else if (m_cgi_state == CGI_STREAMING_BODY)
         m_body_buffer.insert(m_body_buffer.end(), data, data + length);
+}
+
+void CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi_headers)
+{
+    std::ostringstream http_headers;
+    std::string        status = "200 OK";
+
+    if (cgi_headers.count("status"))
+        status = cgi_headers["status"];
+    else if (cgi_headers.count("location"))
+    {
+        status              = "302 Found";
+        m_is_local_redirect = true;
+    }
+
+    http_headers << "HTTP/1.1 " << status << "\r\n";
+
+    if (cgi_headers.count("content-type"))
+        http_headers << "Content-Type: " << cgi_headers["content-type"] << "\r\n";
+    else
+        http_headers << "Content-Type: text/html\r\n"; // Default content type (Change it? Removie it? idk)
+
+    http_headers << "Transfer-encoding: chunked\r\n";
+
+    for (std::map<std::string, std::string>::const_iterator it = cgi_headers.begin(); it != cgi_headers.end(); ++it)
+    {
+        const std::string &key   = it->first;
+        const std::string &value = it->second;
+
+        if (key != "status" && key != "content-type" && key != "location")
+            http_headers << key << ": " << value << "\r\n";
+    }
+
+    http_headers << "\r\n";
+    m_http_response_headers = http_headers.str();
 }
 
 bool CGIResponse::parseCgiHeaders()

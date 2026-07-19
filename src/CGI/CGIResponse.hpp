@@ -19,7 +19,7 @@ class CGIResponse
     bool        parseCgiHeaders();
     std::string getOutputChunk();
 
-    void setCgiState(CgiState state);
+    void     setCgiState(CgiState state);
     CgiState getCgiState() const;
 
     void translateToHttp(std::map<std::string, std::string> &cgi_headers);
