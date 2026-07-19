@@ -15,21 +15,19 @@ class CGIResponse
         CGI_COMPLETE
     };
 
-    void               appendCgiData(const char *data, size_t length);
-    bool               parseCgiHeaders();
-    void               appendTerminalChunk();
-    std::vector<char> &getBodyBuffer();
+    void appendCgiData(const char *data, size_t length);
+    bool parseCgiHeaders();
+    void appendTerminalChunk();
 
-    bool isBufferFull() const;
+    std::vector<char> &getBodyBuffer();
+    void               consumeBodyChunk(size_t length);
+    bool               isBufferFull() const;
 
     void     setCgiState(CgiState state);
     CgiState getCgiState() const;
     int      getErrorCode() const;
     void     generateErrorResponse(int error_code);
-
-    void consumeBodyChunk(size_t length);
-
-    bool isLocalRedirect() const;
+    bool     isLocalRedirect() const;
 
     std::string translateToHttp(std::map<std::string, std::string> &cgi_headers);
 
