@@ -27,7 +27,7 @@
 #define abort(msg)                                                                                                     \
     do                                                                                                                 \
     {                                                                                                                  \
-        std::cerr << __FILE__ << ":" << __LINE__ << ": " << std::endl;                                                 \
+        std::cerr << __FILE__ << ":" << __LINE__ << ": ";                                                              \
         perror(msg);                                                                                                   \
         exit(1);                                                                                                       \
     } while (0)

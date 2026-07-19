@@ -1,5 +1,7 @@
 #include "Multiplexer.h"
 #include "Common.h"
+#include <cstddef>
+#include <sys/epoll.h>
 
 Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist()
 {
@@ -15,6 +17,15 @@ Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist()
     ev.data.u64 = pack_data(m_listeners[0], LISTENER);
     if (epoll_ctl(m_epfd, EPOLL_CTL_ADD, m_listeners[0], &ev) == -1)
         abort("epoll_ctl");
+
+    /**
+     * TODO: SIGPIPE should be ignored! if the CGI scripts closes its reading side and we tried to write to the pipe
+     * signal will kill out process
+     *
+     * More details:
+     * When a process tries to write to a pipe for which no process has an open read descriptor, the kernel sends the
+     * SIGPIPE signal to the writing process. By default, this signal kills a process.
+     */
 }
 
 Multiplexer::Multiplexer(const Multiplexer &other) // NOLINT
@@ -59,85 +70,225 @@ void Multiplexer::run()
     while (i-- > 0)
     {
         ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, -1);
+        std::vector<int> to_be_closed;
+        std::cout << "=========\n";
         for (int j = 0; j < ready; j++)
         {
             int    fd   = unpack_conn_fd(m_evlist[j].data.u64);
             FDRole role = unpack_role(m_evlist[j].data.u64);
+
             log_event(m_evlist[j]);
             if (role == LISTENER)
             {
                 // handle new connection
                 m_conns.accept_new(fd, *this);
+                continue;
             }
-            else if (role == CLIENT)
+
+            Connections::connection_t *connPtr = m_conns.find(fd);
+            if (connPtr == NULL)
             {
+                continue;
+            }
+
+            Connections::connection_t &conn = *connPtr;
+
+            if (role == CLIENT)
+            {
+                if (m_evlist[j].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR))
+                {
+                    conn.closing = true;
+                }
+
                 if (m_evlist[j].events & EPOLLIN)
                 {
-                    // Handle read
-                    m_conns.conn_handle_read(fd, *this);
+                    sock_handle_read(conn);
                 }
-                else if (m_evlist[j].events & EPOLLOUT)
+
+                if (m_evlist[j].events & EPOLLOUT)
                 {
-                    // Handle write
-                    UNIMPLEMENTED("Handle epoll write event");
-                }
-                else if (m_evlist[j].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR))
-                {
-                    // Handle disconnection
-                    m_conns.close_connection(fd, *this);
+                    sock_handle_write(conn);
                 }
             }
+            if (role == CGI_STDIN && (m_evlist[j].events & (EPOLLOUT | EPOLLHUP | EPOLLERR)))
+            {
+                cgi_handle_in(conn);
+            }
+            if (role == CGI_STDOUT && (m_evlist[j].events & (EPOLLIN | EPOLLHUP | EPOLLERR)))
+            {
+                if (m_evlist[j].events & (EPOLLHUP | EPOLLERR))
+                {
+                    conn.cgi_response.setEof();
+                }
+                else
+                {
+                    cgi_handle_out(conn);
+                }
+            }
+            if (conn.closing)
+            {
+                to_be_closed.push_back(fd);
+            }
+            else
+            {
+                update_events(conn);
+            }
+        }
+        for (std::size_t i = 0; i < to_be_closed.size(); i++)
+        {
+            m_conns.close_connection(to_be_closed[i], *this);
         }
     }
 }
 
-/**
- * Start monitoring the specified file descriptor for events
- */
-void Multiplexer::start_monitor_conn(int conn_fd)
-{
-    struct epoll_event ev = {};
-    ev.events             = EPOLLIN | EPOLLRDHUP;
-    ev.data.u64           = pack_data(conn_fd, CLIENT);
-
-    LOG_INFO("EPOLL") << "Registerd (fd=" << conn_fd << ")\n";
-    if (epoll_ctl(m_epfd, EPOLL_CTL_ADD, conn_fd, &ev) == -1)
-        abort("epoll_ctl ADD");
-}
-
-/**
- * Change the settings associated with sockfd in the interest list to the new settings specified in events
- *
- * @sockfd: socket file descriptor
- * @evnts: which events to listen for EPOLLOUT | EPOLLIN
- */
-void Multiplexer::switch_conn_interest(int conn_fd, uint32_t events)
+void Multiplexer::epoll_apply(Connections::connection_t &conn, int op, FDRole role, uint32_t events)
 {
     struct epoll_event ev = {};
     ev.events             = events;
-    ev.data.u64           = pack_data(conn_fd, CLIENT);
+    ev.data.u64           = pack_data(conn.sockfd, role);
+    int fd                = get_role_fd(conn, role);
 
-    if (events == EPOLLIN)
-        LOG_INFO("EPOLL") << "Mod->read (fd=" << conn_fd << ")\n";
-    else if (events == EPOLLOUT)
-        LOG_INFO("EPOLL") << "Mod->write (fd=" << conn_fd << ")\n";
-    else
-        UNREACHABLE("switch_interest got unxpected event");
+    LOG_INFO("EPOLL");
+    switch (op)
+    {
+        case EPOLL_CTL_ADD:
+            std::cout << "ADD";
+            break;
+        case EPOLL_CTL_MOD:
+            std::cout << "MOD";
+            break;
+        case EPOLL_CTL_DEL:
+            std::cout << "DEL";
+            break;
+        default:
+            UNREACHABLE("Wrong value for op argument\n");
+    }
 
-    events = events | EPOLLRDHUP;
-    if (epoll_ctl(m_epfd, EPOLL_CTL_MOD, conn_fd, &ev) == -1)
-        abort("epoll_ctl MOD");
+    std::cout << " fd=" << fd << " type=" << get_role_string(role) << " events={"
+              << ((events & EPOLLIN) ? "EPOLLIN |" : "") << ((events & EPOLLOUT) ? "EPOLLOUT |" : "")
+              << ((events & EPOLLHUP) ? "EPOLLHUP |" : "") << ((events & EPOLLRDHUP) ? "EPOLLRDHUP |" : "")
+              << ((events & EPOLLERR) ? "EPOLLERR |" : "") << "}\n";
+
+    if (epoll_ctl(m_epfd, op, fd, &ev) == -1)
+    {
+        abort("epoll_ctl");
+    }
 }
 
-/**
- * Stop monitoring the specified file descriptor for events
- */
-void Multiplexer::stop_monitor_conn(int conn_fd)
+void Multiplexer::sock_handle_write(Connections::connection_t &conn)
 {
-    if (epoll_ctl(m_epfd, EPOLL_CTL_DEL, conn_fd, NULL) == 0)
-        LOG_INFO("EPOLL") << "Remove (fd=" << conn_fd << ")\n";
+    if (conn.closing)
+    {
+        return;
+    }
+
+    if (conn.cgi_active)
+    {
+        const char *data;
+        size_t      size;
+
+        conn.cgi_response.getBodyData(data, size);
+
+        long count = write(conn.sockfd, data, size);
+
+        LOG_INFO("SOCKET") << "Send=" << count << "B (id=" << conn.sockfd << ")\n";
+
+        if (count < 0)
+        {
+            conn.closing = true;
+        }
+        else
+        {
+            conn.cgi_response.consume(count);
+        }
+    }
+}
+
+void Multiplexer::sock_handle_read(Connections::connection_t &conn)
+{
+    if (conn.closing)
+    {
+        return;
+    }
+
+    char buff[BUFF_SIZE];
+    long n;
+
+    n = recv(conn.sockfd, buff, sizeof(buff), MSG_DONTWAIT);
+
+    if (n == 0)
+    {
+        LOG_INFO("CONNECTIONS") << "Read peer shutdown (fd=" << conn.sockfd << ")\n";
+        conn.closing = true;
+        return;
+    }
+    else if (n == -1)
+    {
+        LOG_ERROR("CONNECTIONS") << "Read (recv) failed (fd=" << conn.sockfd << ")\n";
+        conn.closing = true;
+        return;
+    }
+
+    conn.req.appendDataAndParse(buff, n);
+
+    LOG_INFO("SOCKET") << "RECIEVED=" << n << "B (id=" << conn.sockfd << ")\n";
+
+    if (conn.req.isReadyForRouting())
+    {
+        conn.cgi.execute(conn.req, "cgi.py");
+        conn.cgi_active = true;
+        add_interest(conn, CGI_STDIN, EPOLLOUT);
+        add_interest(conn, CGI_STDOUT, 0);
+        conn.req.isReadyForBodyParsing(true);
+    }
+    if (conn.req.getState() == Request::ERROR)
+    {
+        LOG_INFO("REQUEST") << "HTTP_Error_Code=" << conn.req.getErrorCode() << "\n";
+    }
+}
+
+void Multiplexer::cgi_handle_in(Connections::connection_t &conn)
+{
+    if (conn.closing)
+    {
+        return;
+    }
+
+    ssize_t count = write(conn.cgi.getInFd(), conn.req.getBodyData(), conn.req.getBodySize());
+
+    LOG_INFO("CGI") << " CGI_STDIN_RECIEVED=" << count << " (id=" << conn.sockfd << ")\n";
+
+    if (count > 0)
+    {
+        conn.req.consume(count);
+    }
     else
-        abort("epoll_ctl");
+    {
+        conn.req.consumeBodyChunk();
+    }
+}
+
+void Multiplexer::cgi_handle_out(Connections::connection_t &conn)
+{
+    if (conn.closing && conn.cgi_active)
+    {
+        return;
+    }
+
+    char buff[BUFF_SIZE];
+
+    ssize_t count = read(conn.cgi.getOutFd(), buff, BUFF_SIZE);
+
+    LOG_INFO("CGI") << " CGI_STDOUT_SEND=" << count << " (id=" << conn.sockfd << ")\n";
+
+    if (count > 0)
+    {
+        conn.cgi_response.append(buff, count);
+    }
+    else
+    {
+        conn.cgi_response.setEof();
+    }
 }
 
 /**
@@ -145,8 +296,63 @@ void Multiplexer::stop_monitor_conn(int conn_fd)
  */
 void Multiplexer::log_event(struct epoll_event ev)
 {
-    LOG_INFO("EPOLL") << "New event: " << ((ev.events & EPOLLIN) ? "EPOLLIN " : "")
+    LOG_INFO("EPOLL") << "event: " << ((ev.events & EPOLLIN) ? "EPOLLIN " : "")
                       << ((ev.events & EPOLLOUT) ? "EPOLLOUT " : "") << ((ev.events & EPOLLHUP) ? "EPOLLHUP " : "")
                       << ((ev.events & EPOLLRDHUP) ? "EPOLLRDHUP " : "") << ((ev.events & EPOLLERR) ? "EPOLLERR " : "")
-                      << "(fd=" << unpack_conn_fd(ev.data.u64) << ")\n";
+                      << "(id=" << unpack_conn_fd(ev.data.u64) << ")"
+                      << " type=" << get_role_string(unpack_role(ev.data.u64)) << "\n";
+}
+
+void Multiplexer::update_events(Connections::connection_t &conn)
+{
+    uint32_t client_events = 0;
+
+    bool req_body_empty = conn.req.getBody().empty();
+    bool req_complete   = conn.req.getState() == Request::COMPLETE;
+    bool req_full       = conn.req.getState() == Request::BODY_CHUNK_READY;
+
+    if (!req_complete && !req_full)
+    {
+        client_events |= EPOLLIN;
+    }
+
+    if (conn.cgi_active)
+    {
+        if (req_complete && req_body_empty)
+        {
+            remove_interest(conn, CGI_STDIN);
+        }
+        else if (req_full)
+        {
+            modify_interest(conn, CGI_STDIN, EPOLLOUT);
+        }
+        else
+        {
+            modify_interest(conn, CGI_STDIN, 0);
+        }
+
+        if (conn.cgi_response.isComplete())
+        {
+            remove_interest(conn, CGI_STDIN);
+            conn.cgi_response.reset();
+            client_events = EPOLLIN;
+        }
+        else if (!conn.cgi_response.isBufferFull())
+        {
+            client_events |= EPOLLOUT;
+            modify_interest(conn, CGI_STDOUT, 0);
+        }
+        else
+        {
+            modify_interest(conn, CGI_STDOUT, CGI_STDIN);
+        }
+
+        if (conn.cgi_in_events == 0 && conn.cgi_out_events == 0)
+        {
+            conn.cgi.waitAndClean();
+            remove_interest(conn, CGI_STDIN);
+            remove_interest(conn, CGI_STDOUT);
+        }
+    }
+    modify_interest(conn, CLIENT, client_events);
 }
