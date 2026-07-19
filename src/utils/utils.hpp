@@ -33,4 +33,8 @@ bool is_file_executable(const std::string &filepath);
  */
 bool string_starts_with(const std::string &bigger_string, const std::string &prefix);
 
+bool isTokenChar(char c);
+bool isValidHeaderValue(const std::string &value);
+bool isValidHeaderName(const std::string &key);
+
 #endif /* UTILS_HPP */

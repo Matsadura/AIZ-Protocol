@@ -1,7 +1,7 @@
 #include "CGIResponse.hpp"
 #include <sstream>
 
-CGIResponse::CGIResponse() : m_cgi_state(CGI_IDLE), m_is_local_redirect(false)
+CGIResponse::CGIResponse() : m_cgi_state(CGI_IDLE), m_is_local_redirect(false), m_error_code(0)
 {
 }
 
@@ -19,8 +19,27 @@ CGIResponse::CgiState CGIResponse::getCgiState() const
     return m_cgi_state;
 }
 
+bool CGIResponse::isLocalRedirect() const
+{
+    return m_is_local_redirect;
+}
+
+int CGIResponse::getErrorCode() const
+{
+    return m_error_code;
+}
+
+/**
+ * appendCgiData - Appends CGI data to the internal buffer.
+ * @data: A pointer to the data to be appended.
+ * @length: The length of the data to be appended.
+ */
 void CGIResponse::appendCgiData(const char *data, size_t length)
 {
+    if (m_error_code != 0)
+        return;
+    if (m_cgi_state == CGI_IDLE)
+        m_cgi_state = CGI_READING_HEADERS;
     if (m_cgi_state == CGI_READING_HEADERS)
     {
         m_cgi_header_buffer.append(data, length);
@@ -31,6 +50,10 @@ void CGIResponse::appendCgiData(const char *data, size_t length)
         m_body_buffer.insert(m_body_buffer.end(), data, data + length);
 }
 
+/**
+ * translateToHttp - Translates CGI headers to HTTP response headers.
+ * @cgi_headers: A map containing CGI headers to be translated.
+ */
 void CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi_headers)
 {
     std::ostringstream http_headers;
@@ -67,6 +90,10 @@ void CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi_header
     m_http_response_headers = http_headers.str();
 }
 
+/**
+ * parseCgiHeaders - Parses the CGI headers from the buffer.
+ * Return: true if headers are complete and valid, false if more data is needed or if there's an error.
+ */
 bool CGIResponse::parseCgiHeaders()
 {
     size_t boundary_pos = m_cgi_header_buffer.find("\r\n\r\n");
@@ -86,34 +113,93 @@ bool CGIResponse::parseCgiHeaders()
 
     m_body_buffer.insert(m_body_buffer.end(), leftover_body.begin(), leftover_body.end());
 
-    std::vector<std::string> header_lines = split(headers_part, '\n');
-
+    // NOTE: Keep your split function intact in utils.cpp
+    std::vector<std::string>           header_lines = split(headers_part, '\n');
     std::map<std::string, std::string> parsed_cgi_headers;
 
-    // 1 - PARSE HEADERS, TO_DO -> Validate headers
     for (std::vector<std::string>::const_iterator it = header_lines.begin(); it != header_lines.end(); ++it)
     {
-        const std::string &line      = *it;
-        size_t             colon_pos = line.find(':');
-        if (colon_pos != std::string::npos)
+        std::string line = *it;
+
+        // Remove trailing \r if it exists (since we split by \n)
+        if (!line.empty() && line[line.length() - 1] == '\r')
+            line.erase(line.length() - 1);
+
+        if (line.empty())
+            continue;
+
+        // RULE: CGI/1.1 does not support continuation lines
+        if (line[0] == ' ' || line[0] == '\t')
         {
-            std::string key   = line.substr(0, colon_pos);
-            std::string value = line.substr(colon_pos + 1);
-            trim(key);
-            trim(value);
-            // TODO -> Validate headers
-            std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-            parsed_cgi_headers[key] = value;
+            m_error_code = 502;
+            return true;
         }
+
+        size_t colon_pos = line.find(':');
+        if (colon_pos == std::string::npos)
+        {
+            m_error_code = 502;
+            return true;
+        }
+
+        std::string key   = line.substr(0, colon_pos);
+        std::string value = line.substr(colon_pos + 1);
+
+        // RULE: No whitespace between field name and colon
+        if (!key.empty() && (key[key.length() - 1] == ' ' || key[key.length() - 1] == '\t'))
+        {
+            m_error_code = 502;
+            return true;
+        }
+
+        // Safely trim and validate
+        trim(key);
+        trim(value);
+        std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+
+        if (!isValidHeaderName(key) || !isValidHeaderValue(value))
+        {
+            m_error_code = 502;
+            return true;
+        }
+
+        // RULE: NULL field value is equivalent to a field not being sent
+        if (value.empty())
+            continue;
+
+        // RULE: CGI fields MUST NOT appear more than once
+        if (key == "content-type" || key == "location" || key == "status")
+        {
+            if (parsed_cgi_headers.count(key) > 0)
+            {
+                m_error_code = 502;
+                return true;
+            }
+        }
+
+        parsed_cgi_headers[key] = value;
     }
 
-    // 2 - TRANSLATE TO HTTP HEADERS
+    // RULE: At least one CGI field MUST be supplied
+    if (parsed_cgi_headers.empty())
+    {
+        m_error_code = 502;
+        return true;
+    }
+
     translateToHttp(parsed_cgi_headers);
     return true;
 }
 
+/**
+ * getOutputChunk - Retrieves the next chunk of output to be sent to the client.
+ * Return: A string containing the next chunk of output, or an empty string if there's no more data.
+ */
 std::string CGIResponse::getOutputChunk()
 {
+    if (m_error_code != 0)
+        return "";
+
     std::string output;
 
     if (!m_http_response_headers.empty())
@@ -137,12 +223,33 @@ std::string CGIResponse::getOutputChunk()
     return output;
 }
 
+/**
+ * getTerminalChunk - Retrieves the terminal chunk indicating the end of the response.
+ * Return: A string containing the terminal chunk, or an empty string if not applicable.
+ */
 std::string CGIResponse::getTerminalChunk()
 {
-    if (m_cgi_state == CGI_STREAMING_BODY)
+    if (m_cgi_state == CGI_STREAMING_BODY && m_error_code == 0)
     {
         m_cgi_state = CGI_COMPLETE;
         return "0\r\n\r\n";
     }
     return "";
+}
+
+/**
+ * generateErrorResponse - Generates a simple HTTP error response for the given error code.
+ * @error_code: The HTTP error code to include in the response.
+ * Return: A string containing the HTTP error response.
+ */
+std::string CGIResponse::generateErrorResponse(int error_code)
+{
+    if (error_code == 0)
+        return "";
+    std::ostringstream response;
+    response << "HTTP/1.1 " << error_code << " Error\r\n";
+    response << "Content-Type: text/plain\r\n";
+    response << "Content-Length: 0\r\n";
+    response << "\r\n";
+    return response.str();
 }

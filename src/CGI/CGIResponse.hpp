@@ -20,8 +20,12 @@ class CGIResponse
     std::string getOutputChunk();
     std::string getTerminalChunk();
 
-    void     setCgiState(CgiState state);
-    CgiState getCgiState() const;
+    void        setCgiState(CgiState state);
+    CgiState    getCgiState() const;
+    int         getErrorCode() const;
+    std::string generateErrorResponse(int error_code);
+
+    bool isLocalRedirect() const;
 
     void translateToHttp(std::map<std::string, std::string> &cgi_headers);
 
@@ -34,4 +38,5 @@ class CGIResponse
     std::string       m_http_response_headers;
     std::vector<char> m_body_buffer;
     bool              m_is_local_redirect;
+    int               m_error_code;
 };
