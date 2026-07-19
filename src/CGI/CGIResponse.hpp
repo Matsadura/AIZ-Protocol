@@ -1,6 +1,8 @@
 #pragma once
 #include "../../src/core/Common.h"
+#include "../../src/utils/utils.hpp"
 #include <map>
+#include <vector>
 
 class CGIResponse
 {
@@ -21,6 +23,9 @@ class CGIResponse
     CgiState getCgiState() const;
 
     void translateToHttp(std::map<std::string, std::string> &cgi_headers);
+
+    CGIResponse();
+    ~CGIResponse();
 
   private:
     CgiState          m_cgi_state;
