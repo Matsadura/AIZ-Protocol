@@ -38,18 +38,19 @@ void CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi_header
 
     if (cgi_headers.count("status"))
         status = cgi_headers["status"];
-    else if (cgi_headers.count("location"))
+    if (cgi_headers.count("location"))
     {
-        status              = "302 Found";
-        m_is_local_redirect = true;
+        std::string loc = cgi_headers["location"];
+        if (!loc.empty() && loc[0] == '/')
+            m_is_local_redirect = true;
+        else
+            status = "302 Found";
     }
 
     http_headers << "HTTP/1.1 " << status << "\r\n";
 
     if (cgi_headers.count("content-type"))
         http_headers << "Content-Type: " << cgi_headers["content-type"] << "\r\n";
-    else
-        http_headers << "Content-Type: text/html\r\n"; // Default content type (Change it? Removie it? idk)
 
     http_headers << "Transfer-encoding: chunked\r\n";
 
@@ -101,6 +102,7 @@ bool CGIResponse::parseCgiHeaders()
             trim(key);
             trim(value);
             // TODO -> Validate headers
+            std::transform(key.begin(), key.end(), key.begin(), ::tolower);
             parsed_cgi_headers[key] = value;
         }
     }
@@ -133,4 +135,14 @@ std::string CGIResponse::getOutputChunk()
     }
 
     return output;
+}
+
+std::string CGIResponse::getTerminalChunk()
+{
+    if (m_cgi_state == CGI_STREAMING_BODY)
+    {
+        m_cgi_state = CGI_COMPLETE;
+        return "0\r\n\r\n";
+    }
+    return "";
 }

@@ -18,6 +18,7 @@ class CGIResponse
     void        appendCgiData(const char *data, size_t length);
     bool        parseCgiHeaders();
     std::string getOutputChunk();
+    std::string getTerminalChunk();
 
     void     setCgiState(CgiState state);
     CgiState getCgiState() const;
