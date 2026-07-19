@@ -8,7 +8,7 @@
  */
 bool Request::isReadyForBodyParsing(bool yes_no)
 {
-    if (yes_no == true)
+    if (yes_no == true && m_state != COMPLETE)
     {
         m_state = BODY;
         return true;
