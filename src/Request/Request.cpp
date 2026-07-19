@@ -204,6 +204,27 @@ const std::vector<char> &Request::getBody() const
 }
 
 /**
+ * Get a pointer to the underlying memory buffer of the request body
+ * This will allow the buffer to be passed directly to system I/O system calls that accept a void* pointer
+ *
+ * Return: Pointer to the underlying body memory buffer
+ */
+void *Request::getBodyData()
+{
+    return m_body.data();
+}
+
+/**
+ * Get the size of the request body
+ *
+ * Return: The number of bytes contained in the request body buffer
+ */
+std::size_t Request::getBodySize()
+{
+    return m_body.size();
+}
+
+/**
  * Get the raw buffer containing the unprocessed request data.
  * Return: A reference to the string containing the raw request data.
  */
@@ -447,4 +468,23 @@ void Request::parseBody(void)
     if (!parseUnchunkedBody())
         return;
     m_state = COMPLETE;
+}
+
+/**
+ * Chop number of bytes from the front of the request body buffer and set the request to the ready state to get more
+ * data to parse if the intermediate body is empty
+ *
+ * @size: Number of bytes to earse from the body
+ */
+void Request::consume(std::size_t size)
+{
+    if (size > m_body.size())
+    {
+        size = m_body.size();
+    }
+    m_body.erase(m_body.begin(), m_body.begin() + static_cast<long>(size));
+    if (m_body.empty())
+    {
+        consumeBodyChunk();
+    }
 }

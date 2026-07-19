@@ -73,9 +73,12 @@ class Request
     std::string                        getHeader(const std::string &key) const;
     std::map<std::string, std::string> getHeaders(void) const;
     const std::vector<char>           &getBody(void) const;
+    std::size_t                        getBodySize();
+    void                              *getBodyData();
     const std::string                 &getRawBuffer(void) const;
 
     void consumeBodyChunk();
+    void consume(std::size_t size);
 
   private:
     static const size_t CHUNK_SIZE_LIMIT = 64 * 1024;
