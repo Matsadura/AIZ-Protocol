@@ -109,3 +109,28 @@ bool CGIResponse::parseCgiHeaders()
     translateToHttp(parsed_cgi_headers);
     return true;
 }
+
+std::string CGIResponse::getOutputChunk()
+{
+    std::string output;
+
+    if (!m_http_response_headers.empty())
+    {
+        output += m_http_response_headers;
+        m_http_response_headers.clear();
+    }
+
+    if (!m_body_buffer.empty())
+    {
+        std::ostringstream hex_size;
+        hex_size << std::hex << m_body_buffer.size() << "\r\n";
+
+        output += hex_size.str();
+        output.append(m_body_buffer.begin(), m_body_buffer.end());
+        output += "\r\n";
+
+        m_body_buffer.clear();
+    }
+
+    return output;
+}
