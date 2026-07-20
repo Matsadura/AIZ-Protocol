@@ -135,3 +135,34 @@ bool is_file_executable(const std::string &filepath)
 {
     return access(filepath.c_str(), X_OK) == 0;
 }
+
+bool isTokenChar(char c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '!' || c == '#' ||
+           c == '$' || c == '%' || c == '&' || c == '\'' || c == '*' || c == '+' || c == '-' || c == '.' || c == '^' ||
+           c == '_' || c == '`' || c == '|' || c == '~';
+}
+
+bool isValidHeaderName(const std::string &key)
+{
+    if (key.empty())
+        return false;
+    for (size_t i = 0; i < key.size(); ++i)
+    {
+        if (!isTokenChar(key[i]))
+            return false;
+    }
+    return true;
+}
+
+bool isValidHeaderValue(const std::string &value)
+{
+    for (size_t i = 0; i < value.size(); ++i)
+    {
+        if ((value[i] <= 31 && value[i] != '\t') || value[i] == 127)
+            return false;
+    }
+    if (value.size() > 8192)
+        return false;
+    return true;
+}
