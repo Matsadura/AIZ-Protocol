@@ -26,6 +26,7 @@ Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist()
      * When a process tries to write to a pipe for which no process has an open read descriptor, the kernel sends the
      * SIGPIPE signal to the writing process. By default, this signal kills a process.
      */
+    signal(SIGPIPE, SIG_IGN);
 }
 
 Multiplexer::Multiplexer(const Multiplexer &other) // NOLINT
@@ -221,7 +222,7 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
 
     if (conn.req.isReadyForRouting() && !conn.cgi_active) // TODO: check if response is already calculated
     {
-        conn.cgi.execute(conn.req, "./cgi.py");
+        conn.cgi.execute(conn.req, "./cgifdas.py");
         conn.cgi_active = true;
         add_interest(conn, CGI_STDIN, EPOLLOUT);
         add_interest(conn, CGI_STDOUT, 0);
@@ -271,11 +272,22 @@ void Multiplexer::cgi_handle_out(Connections::connection_t &conn)
     {
         LOG_INFO("CGI") << "STDOUT_SEND=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
         conn.cgi_response.appendCgiData(buff, count);
+        return;
+    }
+
+    remove_interest(conn, CGI_STDOUT);
+
+    int  status = 0;
+    bool reaped = conn.cgi.reapIfExited(status);
+    bool failed = (count < 0) || (reaped && conn.cgi.exitedWithFailure(status));
+
+    if (failed)
+    {
+        conn.cgi_response.generateErrorResponse(500);
     }
     else
     {
         conn.cgi_response.appendTerminalChunk();
-        remove_interest(conn, CGI_STDOUT);
     }
 }
 
