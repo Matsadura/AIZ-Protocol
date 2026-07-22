@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <sstream>
 
-CGIResponse::CGIResponse() : m_cgi_state(CGI_IDLE), m_is_local_redirect(false), m_error_code(0)
+CGIResponse::CGIResponse() : m_cgi_state(CGI_IDLE), m_is_local_redirect(false), m_error_code(0), m_already_send_count(0)
 {
 }
 
@@ -273,4 +273,5 @@ void CGIResponse::consumeBodyChunk(size_t length)
     {
         m_body_buffer.erase(m_body_buffer.begin(), m_body_buffer.begin() + static_cast<long>(length));
     }
+    m_already_send_count += length;
 }
