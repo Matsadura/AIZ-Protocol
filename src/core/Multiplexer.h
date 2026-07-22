@@ -9,6 +9,48 @@
 #define MAX_EVENTS 1024
 #define BUFF_SIZE 65536
 
+#define __ANSI_SEQ(n) "\033[" #n "m"
+
+#define BOLD __ANSI_SEQ(1)
+
+#define COLOR_WEAK __ANSI_SEQ(2)
+#define COLOR_HIGHLIGHT __ANSI_SEQ(3)
+#define COLOR_UNDERLINE __ANSI_SEQ(4)
+#define COLOR_BLACK __ANSI_SEQ(30)
+#define COLOR_DARK_RED __ANSI_SEQ(31)
+#define COLOR_DARK_GREEN __ANSI_SEQ(32)
+#define COLOR_DARK_YELLOW __ANSI_SEQ(33)
+#define COLOR_DARK_BLUE __ANSI_SEQ(34)
+#define COLOR_DARK_PINK __ANSI_SEQ(35)
+#define COLOR_DARK_CYAN __ANSI_SEQ(36)
+#define COLOR_BLACK_BG __ANSI_SEQ(40)
+#define COLOR_DARK_RED_BG __ANSI_SEQ(41)
+#define COLOR_DARK_GREEN_BG __ANSI_SEQ(42)
+#define COLOR_DARK_YELLOW_BG __ANSI_SEQ(43)
+#define COLOR_DARK_BLUE_BG __ANSI_SEQ(44)
+#define COLOR_DARK_PINK_BG __ANSI_SEQ(45)
+#define COLOR_DARK_CYAN_BG __ANSI_SEQ(46)
+#define COLOR_GRAY __ANSI_SEQ(90)
+#define COLOR_LIGHT_RED __ANSI_SEQ(91)
+#define COLOR_LIGHT_GREEN __ANSI_SEQ(92)
+#define COLOR_LIGHT_YELLOW __ANSI_SEQ(93)
+#define COLOR_LIGHT_BLUE __ANSI_SEQ(94)
+#define COLOR_LIGHT_PINK __ANSI_SEQ(95)
+#define COLOR_LIGHT_CYAN __ANSI_SEQ(96)
+#define COLOR_LIGHT_GRAY __ANSI_SEQ(97)
+#define COLOR_GRAY_BG __ANSI_SEQ(100)
+#define COLOR_LIGHT_RED_BG __ANSI_SEQ(101)
+#define COLOR_LIGHT_GREEN_BG __ANSI_SEQ(102)
+#define COLOR_LIGHT_YELLOW_BG __ANSI_SEQ(103)
+#define COLOR_LIGHT_BLUE_BG __ANSI_SEQ(104)
+#define COLOR_LIGHT_PINK_BG __ANSI_SEQ(105)
+#define COLOR_LIGHT_CYAN_BG __ANSI_SEQ(106)
+#define COLOR_LIGHT_GRAY_BG __ANSI_SEQ(107)
+
+#define RESET "\033[m"
+
+#define EPOLL_NOT_REGISTERED 0xABCD
+
 class Multiplexer
 {
   private:
@@ -95,13 +137,13 @@ class Multiplexer
         switch (role)
         {
             case CLIENT:
-                return "CLIENT";
+                return COLOR_DARK_PINK "CLIENT" RESET;
             case LISTENER:
-                return "LISTENER";
+                return COLOR_DARK_PINK "LISTENER" RESET;
             case CGI_STDIN:
-                return "CGI_STDIN";
+                return COLOR_DARK_PINK "CGI_STDIN" RESET;
             case CGI_STDOUT:
-                return "CGI_STDOUT";
+                return COLOR_DARK_PINK "CGI_STDOUT" RESET;
             default:
                 UNREACHABLE("get_role_string() got unknown role");
         }
@@ -111,6 +153,10 @@ class Multiplexer
     {
         uint32_t &prev_events = get_role_events(conn, role);
 
+        if (prev_events != EPOLL_NOT_REGISTERED)
+        {
+            return;
+        }
         prev_events = events;
         epoll_apply(conn, EPOLL_CTL_ADD, role, events);
     }
@@ -118,6 +164,12 @@ class Multiplexer
     void modify_interest(Connections::connection_t &conn, FDRole role, uint32_t events)
     {
         uint32_t &prev_events = get_role_events(conn, role);
+
+        if (prev_events == EPOLL_NOT_REGISTERED)
+        {
+            return;
+        }
+
         if (prev_events != events)
         {
             prev_events = events;
@@ -127,18 +179,15 @@ class Multiplexer
 
     void remove_interest(Connections::connection_t &conn, FDRole role)
     {
-        int       fd          = get_role_fd(conn, role);
         uint32_t &prev_events = get_role_events(conn, role);
 
-        if (epoll_ctl(m_epfd, EPOLL_CTL_DEL, fd, NULL) == 0)
+        if (prev_events == EPOLL_NOT_REGISTERED)
         {
-            prev_events = 0;
-            LOG_INFO("EPOLL") << "Remove (fd=" << fd << ", type=" << get_role_string(role) << ")\n";
+            return;
         }
-        else
-        {
-            abort("epoll_ctl");
-        }
+
+        prev_events = EPOLL_NOT_REGISTERED;
+        epoll_apply(conn, EPOLL_CTL_DEL, role, 0);
     }
 
     void cgi_handle_in(Connections::connection_t &conn);
