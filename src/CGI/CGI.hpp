@@ -36,8 +36,12 @@ class CGI
     bool   isRunning() const;
     bool   isTimeout(time_t start_time, int timeout) const;
     time_t getStartTime() const;
+    bool   exitedWithFailure(int status);
+    bool   reapIfExited(int &status);
 
     void waitAndClean();
+
+    static std::string describeStatus(int status);
 };
 
 #endif

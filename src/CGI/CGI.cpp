@@ -75,7 +75,8 @@ void CGI::execute(const Request &req, const std::string &scriptPath)
         close(m_pipe_out[0]);
 
         execve(scriptPath.c_str(), m_argv.data(), m_envp.data());
-        abort("Failed to execute CGI script");
+        std::exit(127);
+        // abort("Failed to execute CGI script");
     }
     else
     {
@@ -156,12 +157,8 @@ void CGI::buildArgv(const std::string &scriptPath)
  */
 void CGI::waitAndClean()
 {
-    if (m_pid > 0)
-    {
-        int status;
-        waitpid(m_pid, &status, WNOHANG);
-        m_pid = -1;
-    }
+    int status;
+    reapIfExited(status);
 
     if (m_pipe_in[0] != -1)
     {
@@ -209,4 +206,63 @@ bool CGI::isTimeout(time_t start_time, int timeout) const
 time_t CGI::getStartTime() const
 {
     return m_start_time;
+}
+
+/**
+ * Check if cgi scripts exited with failure status
+ *
+ * Return: true if script failed
+ */
+bool CGI::exitedWithFailure(int status)
+{
+    bool failed = !WIFEXITED(status) || WEXITSTATUS(status) != 0;
+
+    if (failed)
+    {
+        LOG_ERROR("CGI") << "Script: \"" << m_argv[0] << "\" Failed! Raison: " << describeStatus(status) << "\n";
+    }
+
+    return failed;
+}
+
+/**
+ * Capture the cgi status code to check if it failed
+ */
+bool CGI::reapIfExited(int &status)
+{
+    if (m_pid <= 0)
+    {
+        return false;
+    }
+
+    pid_t result = waitpid(m_pid, &status, WNOHANG);
+    if (result != m_pid)
+    {
+        return false;
+    }
+
+    m_pid = -1;
+    return true;
+}
+
+/**
+ * This will be used to log what happened to the process if it failed
+ */
+std::string CGI::describeStatus(int status)
+{
+    std::ostringstream oss;
+
+    if (WIFEXITED(status))
+    {
+        oss << "exited with code " << WEXITSTATUS(status);
+    }
+    else if (WIFSIGNALED(status))
+    {
+        oss << "killed by signal " << WTERMSIG(status);
+    }
+    else
+    {
+        oss << "ended abnormally";
+    }
+    return oss.str();
 }
