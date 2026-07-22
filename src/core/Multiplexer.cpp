@@ -172,22 +172,20 @@ void Multiplexer::sock_handle_write(Connections::connection_t &conn)
 
     if (conn.cgi_active)
     {
-        const char *data;
-        size_t      size;
-
-        conn.cgi_response.getBodyData(data, size);
+        const char *data = conn.cgi_response.getBodyBuffer().data();
+        size_t      size = conn.cgi_response.getBodyBuffer().size();
 
         long count = write(conn.sockfd, data, size);
 
         LOG_INFO("SOCKET") << "Send=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
 
-        if (count < 0)
+        if (count <= 0)
         {
             conn.closing = true;
         }
         else
         {
-            conn.cgi_response.consume(count);
+            conn.cgi_response.consumeBodyChunk(count);
         }
     }
 }
@@ -223,7 +221,7 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
 
     if (conn.req.isReadyForRouting() && !conn.cgi_active) // TODO: check if response is already calculated
     {
-        conn.cgi.execute(conn.req, "cgisf.py");
+        conn.cgi.execute(conn.req, "./cgi.py");
         conn.cgi_active = true;
         add_interest(conn, CGI_STDIN, EPOLLOUT);
         add_interest(conn, CGI_STDOUT, 0);
@@ -272,11 +270,11 @@ void Multiplexer::cgi_handle_out(Connections::connection_t &conn)
     if (count > 0)
     {
         LOG_INFO("CGI") << "STDOUT_SEND=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
-        conn.cgi_response.append(buff, count);
+        conn.cgi_response.appendCgiData(buff, count);
     }
     else
     {
-        conn.cgi_response.setEof();
+        conn.cgi_response.appendTerminalChunk();
         remove_interest(conn, CGI_STDOUT);
     }
 }
@@ -322,13 +320,17 @@ void Multiplexer::update_events(Connections::connection_t &conn)
             client_events |= EPOLLIN;
         }
 
-        if (conn.cgi_response.isComplete())
+        bool cgi_res_complete = conn.cgi_response.getCgiState() == CGIResponse::CGI_COMPLETE;
+        bool cgi_res_empty    = conn.cgi_response.getBodyBuffer().empty();
+        bool cgi_res_full     = conn.cgi_response.isBufferFull();
+
+        if (cgi_res_complete && cgi_res_empty)
         {
             remove_interest(conn, CGI_STDOUT);
             conn.closing = true; // TODO: This will close the connection immediately should we persist the connection?
                                  // or should we act according the keep-alive header?
         }
-        else if (conn.cgi_response.isBufferFull())
+        else if (cgi_res_full || (cgi_res_complete && !cgi_res_empty))
         {
             client_events |= EPOLLOUT;
             modify_interest(conn, CGI_STDOUT, 0);

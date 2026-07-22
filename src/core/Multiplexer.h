@@ -1,7 +1,7 @@
 #ifndef MULTIPLEXER_H
 #define MULTIPLEXER_H
 
-#include "CGI_Response.hpp"
+#include "../CGI/CGIResponse.hpp"
 #include "Common.h"
 #include "Connections.h"
 #include "Listeners.h"

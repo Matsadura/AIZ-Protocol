@@ -3,7 +3,7 @@
 
 #include "../../src/Request/Request.hpp"
 #include "../CGI/CGI.hpp"
-#include "CGI_Response.hpp"
+#include "../CGI/CGIResponse.hpp"
 #include "Common.h"
 
 class ListenerSocket;
@@ -21,12 +21,12 @@ class Connections
         uint32_t                sock_events;
 
         // CGI stuff
-        bool            cgi_active;
-        CGI             cgi;
-        uint32_t        cgi_in_events;
-        uint32_t        cgi_out_events;
-        CgiOutputParser cgi_response;
-        bool            closing;
+        bool        cgi_active;
+        CGI         cgi;
+        uint32_t    cgi_in_events;
+        uint32_t    cgi_out_events;
+        CGIResponse cgi_response;
+        bool        closing;
 
     } connection_t;
 
