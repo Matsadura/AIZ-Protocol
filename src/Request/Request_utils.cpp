@@ -582,9 +582,9 @@ bool Request::parseChunkData(void)
     if (!validateBodySize(bytes_to_append))
         return false;
 
-    size_t available_space = CHUNK_SIZE_LIMIT - m_body.size();
-    if (bytes_to_append > available_space)
-        bytes_to_append = available_space;
+    // size_t available_space = CHUNK_SIZE_LIMIT - m_body.size();
+    // if (bytes_to_append > available_space)
+    //     bytes_to_append = available_space;
 
     m_body.insert(m_body.end(), m_raw_buffer.begin(),
                   m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_to_append));
