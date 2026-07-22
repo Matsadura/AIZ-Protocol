@@ -42,5 +42,6 @@ class CGIResponse
     std::vector<char> m_body_buffer;
     bool              m_is_local_redirect;
     int               m_error_code;
-    std::size_t       m_already_send_count;
+    std::size_t m_already_send_count; // keep truck of how much data have been sent to the client, if data already sent
+                                      // to the client no need to send errors
 };
