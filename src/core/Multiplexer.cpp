@@ -66,8 +66,7 @@ inline uint64_t Multiplexer::pack_data(int conn_fd, FDRole role)
 void Multiplexer::run()
 {
     int ready;
-    int i = 10;
-    while (i-- > 0)
+    while (true)
     {
         ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, -1);
         std::vector<int> to_be_closed;
@@ -80,7 +79,6 @@ void Multiplexer::run()
             log_event(m_evlist[j]);
             if (role == LISTENER)
             {
-                // handle new connection
                 m_conns.accept_new(fd, *this);
                 continue;
             }
@@ -116,22 +114,12 @@ void Multiplexer::run()
             }
             if (role == CGI_STDOUT && (m_evlist[j].events & (EPOLLIN | EPOLLHUP | EPOLLERR)))
             {
-                if (m_evlist[j].events & (EPOLLHUP | EPOLLERR))
-                {
-                    conn.cgi_response.setEof();
-                }
-                else
-                {
-                    cgi_handle_out(conn);
-                }
+                cgi_handle_out(conn);
             }
+            update_events(conn);
             if (conn.closing)
             {
                 to_be_closed.push_back(fd);
-            }
-            else
-            {
-                update_events(conn);
             }
         }
         for (std::size_t i = 0; i < to_be_closed.size(); i++)
@@ -191,7 +179,7 @@ void Multiplexer::sock_handle_write(Connections::connection_t &conn)
 
         long count = write(conn.sockfd, data, size);
 
-        LOG_INFO("SOCKET") << "Send=" << count << "B (id=" << conn.sockfd << ")\n";
+        LOG_INFO("SOCKET") << "Send=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
 
         if (count < 0)
         {
@@ -231,15 +219,16 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
 
     conn.req.appendDataAndParse(buff, n);
 
-    LOG_INFO("SOCKET") << "RECIEVED=" << n << "B (id=" << conn.sockfd << ")\n";
+    LOG_INFO("SOCKET") << "RECIEVED=" << COLOR_LIGHT_RED << n << RESET " (id=" << conn.sockfd << ")\n";
 
-    if (conn.req.isReadyForRouting())
+    if (conn.req.isReadyForRouting() && !conn.cgi_active) // TODO: check if response is already calculated
     {
-        conn.cgi.execute(conn.req, "cgi.py");
+        conn.cgi.execute(conn.req, "cgisf.py");
         conn.cgi_active = true;
         add_interest(conn, CGI_STDIN, EPOLLOUT);
         add_interest(conn, CGI_STDOUT, 0);
         conn.req.isReadyForBodyParsing(true);
+        conn.req.appendDataAndParse(buff, 0);
     }
     if (conn.req.getState() == Request::ERROR)
     {
@@ -256,15 +245,16 @@ void Multiplexer::cgi_handle_in(Connections::connection_t &conn)
 
     ssize_t count = write(conn.cgi.getInFd(), conn.req.getBodyData(), conn.req.getBodySize());
 
-    LOG_INFO("CGI") << " CGI_STDIN_RECIEVED=" << count << " (id=" << conn.sockfd << ")\n";
-
     if (count > 0)
     {
+        LOG_INFO("CGI") << "STDIN_RECIEVED=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
         conn.req.consume(count);
     }
     else
     {
-        conn.req.consumeBodyChunk();
+        // conn.req.consumeBodyChunk(); // TODO: This used to igonre the reset of request body if cgi_in is closed, but
+        // if no connection persistence is supportd this is irrelevant!
+        remove_interest(conn, CGI_STDIN);
     }
 }
 
@@ -279,15 +269,15 @@ void Multiplexer::cgi_handle_out(Connections::connection_t &conn)
 
     ssize_t count = read(conn.cgi.getOutFd(), buff, BUFF_SIZE);
 
-    LOG_INFO("CGI") << " CGI_STDOUT_SEND=" << count << " (id=" << conn.sockfd << ")\n";
-
     if (count > 0)
     {
+        LOG_INFO("CGI") << "STDOUT_SEND=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
         conn.cgi_response.append(buff, count);
     }
     else
     {
         conn.cgi_response.setEof();
+        remove_interest(conn, CGI_STDOUT);
     }
 }
 
@@ -322,22 +312,23 @@ void Multiplexer::update_events(Connections::connection_t &conn)
         {
             remove_interest(conn, CGI_STDIN);
         }
-        else if (req_full)
+        else if (req_full || (req_complete && !req_body_empty))
         {
             modify_interest(conn, CGI_STDIN, EPOLLOUT);
         }
         else
         {
             modify_interest(conn, CGI_STDIN, 0);
+            client_events |= EPOLLIN;
         }
 
         if (conn.cgi_response.isComplete())
         {
-            remove_interest(conn, CGI_STDIN);
-            conn.cgi_response.reset();
-            client_events = EPOLLIN;
+            remove_interest(conn, CGI_STDOUT);
+            conn.closing = true; // TODO: This will close the connection immediately should we persist the connection?
+                                 // or should we act according the keep-alive header?
         }
-        else if (!conn.cgi_response.isBufferFull())
+        else if (conn.cgi_response.isBufferFull())
         {
             client_events |= EPOLLOUT;
             modify_interest(conn, CGI_STDOUT, 0);
@@ -345,13 +336,6 @@ void Multiplexer::update_events(Connections::connection_t &conn)
         else
         {
             modify_interest(conn, CGI_STDOUT, CGI_STDIN);
-        }
-
-        if (conn.cgi_in_events == 0 && conn.cgi_out_events == 0)
-        {
-            conn.cgi.waitAndClean();
-            remove_interest(conn, CGI_STDIN);
-            remove_interest(conn, CGI_STDOUT);
         }
     }
     modify_interest(conn, CLIENT, client_events);
