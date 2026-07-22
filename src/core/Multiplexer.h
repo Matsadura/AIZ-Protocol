@@ -2,9 +2,12 @@
 #define MULTIPLEXER_H
 
 #include "../CGI/CGIResponse.hpp"
+#include "../config_file_parser/parser/configfile.hpp"
 #include "Common.h"
 #include "Connections.h"
 #include "Listeners.h"
+#include <cstddef>
+#include <sys/epoll.h>
 
 #define MAX_EVENTS 1024
 #define BUFF_SIZE 65536
@@ -49,8 +52,6 @@
 
 #define RESET "\033[m"
 
-#define EPOLL_NOT_REGISTERED 0xABCD
-
 class Multiplexer
 {
   private:
@@ -58,6 +59,7 @@ class Multiplexer
     struct epoll_event m_evlist[MAX_EVENTS];
     Connections        m_conns;
     Listeners          m_listeners;
+    ConfigFile         m_config;
 
     /**
      * @note: this class is uncopyable
@@ -101,6 +103,11 @@ class Multiplexer
     void run();
     void log_event(struct epoll_event ev);
     void epoll_apply(Connections::connection_t &conn, int op, FDRole role, uint32_t events);
+
+    s_Server *get_config(int fd)
+    {
+        return m_listeners.get_listener_config(fd);
+    }
 
     int get_role_fd(Connections::connection_t &conn, FDRole role)
     {

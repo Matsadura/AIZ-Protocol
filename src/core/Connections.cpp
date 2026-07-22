@@ -37,6 +37,11 @@ int Connections::accept_new(int fd, Multiplexer &server)
     cennRef.sock_events    = EPOLL_NOT_REGISTERED;
     cennRef.closing        = false;
     cennRef.cgi_active     = false;
+    cennRef.config         = server.get_config(fd);
+    if (cennRef.config == NULL)
+    {
+        UNREACHABLE("get_config should never return a null value\n");
+    }
     server.add_interest(cennRef, Multiplexer::CLIENT, EPOLLIN);
     return conn.sockfd;
 }
@@ -52,9 +57,9 @@ void Connections::close_connection(int sockfd, Multiplexer &server)
 
     if (conn->cgi_active)
     {
+        conn->cgi.waitAndClean();
         server.remove_interest(*conn, Multiplexer::CGI_STDIN);
         server.remove_interest(*conn, Multiplexer::CGI_STDOUT);
-        conn->cgi.waitAndClean();
     }
 
     LOG_INFO("CONNECTIONS") << "Close (fd=" << sockfd << ") connection\n";

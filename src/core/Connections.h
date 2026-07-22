@@ -4,19 +4,22 @@
 #include "../../src/Request/Request.hpp"
 #include "../CGI/CGI.hpp"
 #include "../CGI/CGIResponse.hpp"
+#include "../config_file_parser/parser/configfile.hpp"
 #include "Common.h"
 
 class ListenerSocket;
 class Multiplexer;
 
+#define EPOLL_NOT_REGISTERED 0xABCD
+
 class Connections
 {
   public:
-    typedef struct
+    struct connection_t
     {
         struct sockaddr_storage addr;
         int                     sockfd;
-        int                     config_id;
+        s_Server               *config;
         Request                 req;
         uint32_t                sock_events;
 
@@ -27,8 +30,7 @@ class Connections
         uint32_t    cgi_out_events;
         CGIResponse cgi_response;
         bool        closing;
-
-    } connection_t;
+    };
 
   private:
     std::map<int, connection_t> m_list;

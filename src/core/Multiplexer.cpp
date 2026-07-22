@@ -1,22 +1,25 @@
 #include "Multiplexer.h"
-#include "Common.h"
-#include <cstddef>
-#include <sys/epoll.h>
 
-Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist()
+Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist(), m_config("configfile/router.conf")
 {
-    // TODO: Read from config file and run all the listeners!
-    m_listeners.create_new(NULL, "8080");
-
     struct epoll_event ev = {};
     m_epfd                = epoll_create(20);
-
     if (m_epfd == -1)
+    {
         abort("epoll_create");
-    ev.events   = EPOLLIN;
-    ev.data.u64 = pack_data(m_listeners[0], LISTENER);
-    if (epoll_ctl(m_epfd, EPOLL_CTL_ADD, m_listeners[0], &ev) == -1)
-        abort("epoll_ctl");
+    }
+
+    std::vector<s_Server> servers = m_config.getConfig();
+    for (std::size_t i = 0; i < servers.size(); i++)
+    {
+        int listen_sock = m_listeners.create_new(servers[i]);
+        ev.events       = EPOLLIN;
+        ev.data.u64     = pack_data(listen_sock, LISTENER);
+        if (epoll_ctl(m_epfd, EPOLL_CTL_ADD, listen_sock, &ev) == -1)
+        {
+            abort("epoll_ctl");
+        }
+    }
 
     /**
      * TODO: SIGPIPE should be ignored! if the CGI scripts closes its reading side and we tried to write to the pipe
@@ -27,17 +30,6 @@ Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist()
      * SIGPIPE signal to the writing process. By default, this signal kills a process.
      */
     signal(SIGPIPE, SIG_IGN);
-}
-
-Multiplexer::Multiplexer(const Multiplexer &other) // NOLINT
-{
-    UNUSED(other);
-}
-
-Multiplexer &Multiplexer::operator=(const Multiplexer &other) // NOLINT
-{
-    UNUSED(other);
-    return (*this);
 }
 
 Multiplexer::~Multiplexer()
@@ -222,6 +214,7 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
 
     if (conn.req.isReadyForRouting() && !conn.cgi_active) // TODO: check if response is already calculated
     {
+        // is_cgi_request(conn.req);
         conn.cgi.execute(conn.req, "./cgifdas.py");
         conn.cgi_active = true;
         add_interest(conn, CGI_STDIN, EPOLLOUT);
