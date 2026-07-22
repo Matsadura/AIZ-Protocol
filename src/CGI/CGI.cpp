@@ -235,6 +235,8 @@ bool CGI::reapIfExited(int &status)
         return false;
     }
 
+    kill(m_pid, SIGTERM);
+
     pid_t result = waitpid(m_pid, &status, WNOHANG);
     if (result != m_pid)
     {

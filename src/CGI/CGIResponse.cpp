@@ -230,6 +230,7 @@ bool CGIResponse::parseCgiHeaders()
  */
 void CGIResponse::appendTerminalChunk()
 {
+    // TODO: what should happend if cgi quites and send terminal chunk while you still in the headers
     if (m_cgi_state == CGI_STREAMING_BODY && m_error_code == 0)
     {
         m_cgi_state      = CGI_COMPLETE;

@@ -14,5 +14,5 @@ class ConfigFile
     ~ConfigFile();
 
     std::vector<s_Server> getConfig() const;
-    s_Server getServerById(int ID) const;
+    s_Server              getServerById(int ID) const;
 };

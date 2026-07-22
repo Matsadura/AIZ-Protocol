@@ -57,9 +57,9 @@ void Connections::close_connection(int sockfd, Multiplexer &server)
 
     if (conn->cgi_active)
     {
-        conn->cgi.waitAndClean();
         server.remove_interest(*conn, Multiplexer::CGI_STDIN);
         server.remove_interest(*conn, Multiplexer::CGI_STDOUT);
+        conn->cgi.waitAndClean();
     }
 
     LOG_INFO("CONNECTIONS") << "Close (fd=" << sockfd << ") connection\n";

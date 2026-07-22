@@ -2,6 +2,7 @@
 #define MULTIPLEXER_H
 
 #include "../CGI/CGIResponse.hpp"
+#include "../Router/Router.hpp"
 #include "../config_file_parser/parser/configfile.hpp"
 #include "Common.h"
 #include "Connections.h"
@@ -9,7 +10,7 @@
 #include <cstddef>
 #include <sys/epoll.h>
 
-#define MAX_EVENTS 1024
+#define MAX_EVENTS 100000
 #define BUFF_SIZE 65536
 
 #define __ANSI_SEQ(n) "\033[" #n "m"

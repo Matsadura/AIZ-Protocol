@@ -1,9 +1,10 @@
 #include "Multiplexer.h"
+#include <cstdio>
 
 Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist(), m_config("configfile/router.conf")
 {
     struct epoll_event ev = {};
-    m_epfd                = epoll_create(20);
+    m_epfd                = epoll_create(10000);
     if (m_epfd == -1)
     {
         abort("epoll_create");
@@ -207,6 +208,11 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
         conn.closing = true;
         return;
     }
+    printf ("--------------------------------------------------------------\n");
+    printf ("CLIENT SENED: %.*s", (int)n, buff);
+    printf ("--------------------------------------------------------------\n");
+
+
 
     conn.req.appendDataAndParse(buff, n);
 
@@ -214,13 +220,20 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
 
     if (conn.req.isReadyForRouting() && !conn.cgi_active) // TODO: check if response is already calculated
     {
-        // is_cgi_request(conn.req);
-        conn.cgi.execute(conn.req, "./cgifdas.py");
-        conn.cgi_active = true;
-        add_interest(conn, CGI_STDIN, EPOLLOUT);
-        add_interest(conn, CGI_STDOUT, 0);
-        conn.req.isReadyForBodyParsing(true);
-        conn.req.appendDataAndParse(buff, 0);
+        CgiMetaData cgi_meta = is_cgi_request(*conn.config, conn.req);
+
+        std::cout << "CGI script: " << cgi_meta.script_path << "\n";
+        std::cout << "CGI path info: " << cgi_meta.path_info << "\n";
+        std::cout << "CGI interpreter path: " << cgi_meta.interpreter_path << "\n";
+        if (cgi_meta.is_cgi)
+        {
+            conn.cgi.execute(conn.req, cgi_meta.script_path);
+            conn.cgi_active = true;
+            add_interest(conn, CGI_STDIN, EPOLLOUT);
+            add_interest(conn, CGI_STDOUT, 0);
+            conn.req.isReadyForBodyParsing(true);
+            conn.req.appendDataAndParse(buff, 0);
+        }
     }
     if (conn.req.getState() == Request::ERROR)
     {
@@ -252,7 +265,7 @@ void Multiplexer::cgi_handle_in(Connections::connection_t &conn)
 
 void Multiplexer::cgi_handle_out(Connections::connection_t &conn)
 {
-    if (conn.closing && conn.cgi_active)
+    if (conn.closing)
     {
         return;
     }

@@ -201,23 +201,6 @@ RouterResult Router::handle_post()
     return RouterResult(200, disk_path, RouterResult::FILE_PATH);
 }
 
-struct CgiMetaData
-{
-    bool        is_cgi;
-    std::string script_path;
-    std::string path_info;
-    std::string interpreter_path;
-
-    CgiMetaData() : is_cgi(false)
-    {
-    }
-
-    CgiMetaData(bool is_cgi_val, const std::string &script, const std::string &info, const std::string &interpreter) :
-        is_cgi(is_cgi_val), script_path(script), path_info(info), interpreter_path(interpreter)
-    {
-    }
-};
-
 CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
 {
     const s_Location *location = RouterResource::get_best_matched_location(server, req.getPath());
