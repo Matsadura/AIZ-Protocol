@@ -254,10 +254,22 @@ bool CGIResponse::parseCgiHeaders()
  */
 void CGIResponse::appendTerminalChunk()
 {
-    // TODO: what should happend if cgi quites and send terminal chunk while you still in the headers
-    if (m_cgi_state == CGI_STREAMING_BODY && m_error_code == 0)
+    if (m_error_code != 0)
+        return;
+
+    // If the CGI script is still in the header reading phase or hasn't started streaming, we can't append a terminal
+    // chunk so we send a clean error
+    // @TODO: Remove error generation as you said (Ali)
+    if (m_cgi_state == CGI_IDLE || m_cgi_state == CGI_READING_HEADERS)
+    {
+        generateErrorResponse(502);
+        return;
+    }
+
+    if (m_cgi_state == CGI_STREAMING_BODY)
     {
         m_cgi_state = CGI_COMPLETE;
+
         if (m_is_chunked_response)
         {
             std::string term = "0\r\n\r\n";
