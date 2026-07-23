@@ -1,7 +1,6 @@
 #include "Multiplexer.h"
-#include <cstdio>
 
-Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist(), m_config("configfile/router.conf")
+Multiplexer::Multiplexer(const char *config_file) : m_epfd(-1), m_evlist(), m_config(config_file)
 {
     struct epoll_event ev = {};
     m_epfd                = epoll_create(10000);
@@ -96,10 +95,6 @@ void Multiplexer::run()
                 {
                     sock_handle_write(conn);
                 }
-            }
-            if (role == CGI_STDIN && (m_evlist[j].events & (EPOLLOUT | EPOLLHUP | EPOLLERR)))
-            {
-                cgi_handle_in(conn);
             }
             if (role == CGI_STDOUT && (m_evlist[j].events & (EPOLLIN | EPOLLHUP | EPOLLERR)))
             {
@@ -210,43 +205,25 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
     {
         CgiMetaData cgi_meta = is_cgi_request(*conn.config, conn.req);
 
-        std::cout << "CGI script: " << cgi_meta.script_path << "\n";
-        std::cout << "CGI path info: " << cgi_meta.path_info << "\n";
-        std::cout << "CGI interpreter path: " << cgi_meta.interpreter_path << "\n";
         if (cgi_meta.is_cgi)
         {
-            conn.cgi.execute(conn.req, cgi_meta.script_path);
+            std::cout << "CGI script: " << cgi_meta.script_path << "\n";
+            std::cout << "CGI path info: " << cgi_meta.path_info << "\n";
+            std::cout << "CGI interpreter path: " << cgi_meta.interpreter_path << "\n";
+            conn.cgi.execute(conn.req, cgi_meta);
             conn.cgi_active = true;
-            add_interest(conn, CGI_STDIN, EPOLLOUT);
             add_interest(conn, CGI_STDOUT, 0);
-            conn.req.isReadyForBodyParsing(true);
+            conn.req.isReadyForBodyParsing();
             conn.req.appendDataAndParse(buff, 0);
+        }
+        else
+        {
+            UNIMPLEMENTED("Use router to route none cgi request");
         }
     }
     if (conn.req.getState() == Request::ERROR)
     {
         LOG_INFO("REQUEST") << "HTTP_Error_Code=" << conn.req.getErrorCode() << "\n";
-    }
-}
-
-void Multiplexer::cgi_handle_in(Connections::connection_t &conn)
-{
-    if (conn.closing)
-    {
-        return;
-    }
-
-    ssize_t count = write(conn.cgi.getInFd(), conn.req.getBodyData(), conn.req.getBodySize());
-
-    if (count > 0)
-    {
-        LOG_INFO("CGI") << "STDIN_RECIEVED=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
-        conn.req.consume(count);
-    }
-    else
-    {
-        conn.req.consumeBodyChunk(); // TODO: This used to igonre the reset of request body if cgi_in is closed, but
-                                     // if no connection persistence is supportd this is irrelevant!
     }
 }
 
@@ -300,32 +277,19 @@ void Multiplexer::update_events(Connections::connection_t &conn)
 {
     uint32_t client_events = 0;
 
-    bool req_body_empty = conn.req.getBody().empty();
-    bool req_complete   = conn.req.getState() == Request::COMPLETE;
-    bool req_full       = conn.req.getState() == Request::BODY_CHUNK_READY;
+    bool req_complete = conn.req.getState() == Request::COMPLETE;
 
-    if (!req_complete && !req_full)
+    if (req_complete)
+    {
+        client_events |= EPOLLOUT;
+    }
+    else
     {
         client_events |= EPOLLIN;
     }
 
     if (conn.cgi_active)
     {
-        if (req_complete && req_body_empty)
-        {
-            remove_interest(conn, CGI_STDIN);
-            close(conn.cgi.getInFd());
-        }
-        else if (req_full || (req_complete && !req_body_empty))
-        {
-            modify_interest(conn, CGI_STDIN, EPOLLOUT);
-        }
-        else
-        {
-            modify_interest(conn, CGI_STDIN, 0);
-            client_events |= EPOLLIN;
-        }
-
         bool cgi_res_complete = conn.cgi_response.getCgiState() == CGIResponse::CGI_COMPLETE;
         bool cgi_res_empty    = conn.cgi_response.getBodyBuffer().empty();
         bool cgi_res_full     = conn.cgi_response.isBufferFull();
@@ -340,10 +304,6 @@ void Multiplexer::update_events(Connections::connection_t &conn)
         {
             client_events |= EPOLLOUT;
             modify_interest(conn, CGI_STDOUT, 0);
-        }
-        else
-        {
-            modify_interest(conn, CGI_STDOUT, CGI_STDIN);
         }
     }
     modify_interest(conn, CLIENT, client_events);

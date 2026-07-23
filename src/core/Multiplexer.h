@@ -2,6 +2,7 @@
 #define MULTIPLEXER_H
 
 #include "../CGI/CGIResponse.hpp"
+#include "../Response/Response.hpp"
 #include "../Router/Router.hpp"
 #include "../config_file_parser/parser/configfile.hpp"
 #include "Common.h"
@@ -73,12 +74,11 @@ class Multiplexer
     enum FDRole
     {
         CLIENT,
-        CGI_STDIN,
         CGI_STDOUT,
         LISTENER,
     };
 
-    Multiplexer();
+    Multiplexer(const char *config_file);
     ~Multiplexer();
 
     /**
@@ -116,8 +116,6 @@ class Multiplexer
         {
             case CLIENT:
                 return conn.sockfd;
-            case CGI_STDIN:
-                return conn.cgi.getInFd();
             case CGI_STDOUT:
                 return conn.cgi.getOutFd();
             default:
@@ -131,8 +129,6 @@ class Multiplexer
         {
             case CLIENT:
                 return conn.sock_events;
-            case CGI_STDIN:
-                return conn.cgi_in_events;
             case CGI_STDOUT:
                 return conn.cgi_out_events;
             default:
@@ -148,8 +144,6 @@ class Multiplexer
                 return COLOR_DARK_PINK "CLIENT" RESET;
             case LISTENER:
                 return COLOR_DARK_PINK "LISTENER" RESET;
-            case CGI_STDIN:
-                return COLOR_DARK_PINK "CGI_STDIN" RESET;
             case CGI_STDOUT:
                 return COLOR_DARK_PINK "CGI_STDOUT" RESET;
             default:
