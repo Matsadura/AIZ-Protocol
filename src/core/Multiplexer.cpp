@@ -24,11 +24,11 @@ Multiplexer::Multiplexer(void) : m_epfd(-1), m_evlist(), m_config("configfile/ro
 
     /**
      * TODO: SIGPIPE should be ignored! if the CGI scripts closes its reading side and we tried to write to the pipe
-     * signal will kill out process
+     * signal will kill our process
      *
      * More details:
      * When a process tries to write to a pipe for which no process has an open read descriptor, the kernel sends the
-     * SIGPIPE signal to the writing process. By default, this signal kills a process.
+     * SIGPIPE signal to the writing process. By default, this signal kills a process
      */
     signal(SIGPIPE, SIG_IGN);
 }
@@ -87,11 +87,6 @@ void Multiplexer::run()
 
             if (role == CLIENT)
             {
-                if (m_evlist[j].events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR))
-                {
-                    conn.closing = true;
-                }
-
                 if (m_evlist[j].events & EPOLLIN)
                 {
                     sock_handle_read(conn);
@@ -196,23 +191,16 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
 
     n = recv(conn.sockfd, buff, sizeof(buff), MSG_DONTWAIT);
 
-    if (n == 0)
+    if (n <= 0)
     {
         LOG_INFO("CONNECTIONS") << "Read peer shutdown (fd=" << conn.sockfd << ")\n";
         conn.closing = true;
         return;
     }
-    else if (n == -1)
-    {
-        LOG_ERROR("CONNECTIONS") << "Read (recv) failed (fd=" << conn.sockfd << ")\n";
-        conn.closing = true;
-        return;
-    }
-    printf ("--------------------------------------------------------------\n");
-    printf ("CLIENT SENED: %.*s", (int)n, buff);
-    printf ("--------------------------------------------------------------\n");
 
-
+    // std::printf("--------------------------------------------------------------\n");
+    // std::printf(" CLIENT SENED: %.*s", (int)n, buff);
+    // std::printf("--------------------------------------------------------------\n");
 
     conn.req.appendDataAndParse(buff, n);
 
@@ -257,9 +245,8 @@ void Multiplexer::cgi_handle_in(Connections::connection_t &conn)
     }
     else
     {
-        // conn.req.consumeBodyChunk(); // TODO: This used to igonre the reset of request body if cgi_in is closed, but
-        // if no connection persistence is supportd this is irrelevant!
-        remove_interest(conn, CGI_STDIN);
+        conn.req.consumeBodyChunk(); // TODO: This used to igonre the reset of request body if cgi_in is closed, but
+                                     // if no connection persistence is supportd this is irrelevant!
     }
 }
 
@@ -327,6 +314,7 @@ void Multiplexer::update_events(Connections::connection_t &conn)
         if (req_complete && req_body_empty)
         {
             remove_interest(conn, CGI_STDIN);
+            close(conn.cgi.getInFd());
         }
         else if (req_full || (req_complete && !req_body_empty))
         {
