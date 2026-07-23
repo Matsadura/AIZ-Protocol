@@ -44,4 +44,5 @@ class CGIResponse
     int               m_error_code;
     std::size_t m_already_send_count; // keep truck of how much data have been sent to the client, if data already sent
                                       // to the client no need to send errors
+    bool m_is_chunked_response;
 };

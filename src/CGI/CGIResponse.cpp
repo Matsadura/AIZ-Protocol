@@ -2,7 +2,12 @@
 #include <cstddef>
 #include <sstream>
 
-CGIResponse::CGIResponse() : m_cgi_state(CGI_IDLE), m_is_local_redirect(false), m_error_code(0), m_already_send_count(0)
+CGIResponse::CGIResponse() :
+    m_cgi_state(CGI_IDLE),
+    m_is_local_redirect(false),
+    m_error_code(0),
+    m_already_send_count(0),
+    m_is_chunked_response(true)
 {
 }
 
@@ -66,14 +71,19 @@ void CGIResponse::appendCgiData(const char *data, size_t length)
     {
         if (length > 0)
         {
-            std::ostringstream hex_size;
-            hex_size << std::hex << length << "\r\n";
-            std::string chunk_hdr = hex_size.str();
+            if (m_is_chunked_response)
+            {
+                std::ostringstream hex_size;
+                hex_size << std::hex << length << "\r\n";
+                std::string chunk_hdr = hex_size.str();
 
-            m_body_buffer.insert(m_body_buffer.end(), chunk_hdr.begin(), chunk_hdr.end());
-            m_body_buffer.insert(m_body_buffer.end(), data, data + length);
-            m_body_buffer.push_back('\r');
-            m_body_buffer.push_back('\n');
+                m_body_buffer.insert(m_body_buffer.end(), chunk_hdr.begin(), chunk_hdr.end());
+                m_body_buffer.insert(m_body_buffer.end(), data, data + length);
+                m_body_buffer.push_back('\r');
+                m_body_buffer.push_back('\n');
+            }
+            else
+                m_body_buffer.insert(m_body_buffer.end(), data, data + length);
         }
     }
 }
@@ -103,14 +113,23 @@ std::string CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi
     if (cgi_headers.count("content-type"))
         http_headers << "Content-Type: " << cgi_headers["content-type"] << "\r\n";
 
-    http_headers << "Transfer-encoding: chunked\r\n";
+    if (cgi_headers.count("content-length"))
+    {
+        http_headers << "Content-Length: " << cgi_headers["content-length"] << "\r\n";
+        m_is_chunked_response = false;
+    }
+    else
+    {
+        http_headers << "Transfer-encoding: chunked\r\n";
+        m_is_chunked_response = true;
+    }
 
     for (std::map<std::string, std::string>::const_iterator it = cgi_headers.begin(); it != cgi_headers.end(); ++it)
     {
         const std::string &key   = it->first;
         const std::string &value = it->second;
 
-        if (key != "status" && key != "content-type" && key != "location")
+        if (key != "status" && key != "content-type" && key != "location" && key != "content-length")
             http_headers << key << ": " << value << "\r\n";
     }
 
@@ -211,14 +230,19 @@ bool CGIResponse::parseCgiHeaders()
 
     if (!leftover_body.empty())
     {
-        std::ostringstream hex_size;
-        hex_size << std::hex << leftover_body.size() << "\r\n";
-        std::string chunk_hdr = hex_size.str();
+        if (m_is_chunked_response)
+        {
+            std::ostringstream hex_size;
+            hex_size << std::hex << leftover_body.size() << "\r\n";
+            std::string chunk_hdr = hex_size.str();
 
-        m_body_buffer.insert(m_body_buffer.end(), chunk_hdr.begin(), chunk_hdr.end());
-        m_body_buffer.insert(m_body_buffer.end(), leftover_body.begin(), leftover_body.end());
-        m_body_buffer.push_back('\r');
-        m_body_buffer.push_back('\n');
+            m_body_buffer.insert(m_body_buffer.end(), chunk_hdr.begin(), chunk_hdr.end());
+            m_body_buffer.insert(m_body_buffer.end(), leftover_body.begin(), leftover_body.end());
+            m_body_buffer.push_back('\r');
+            m_body_buffer.push_back('\n');
+        }
+        else
+            m_body_buffer.insert(m_body_buffer.end(), leftover_body.begin(), leftover_body.end());
     }
 
     m_cgi_header_buffer.clear();
@@ -233,9 +257,12 @@ void CGIResponse::appendTerminalChunk()
     // TODO: what should happend if cgi quites and send terminal chunk while you still in the headers
     if (m_cgi_state == CGI_STREAMING_BODY && m_error_code == 0)
     {
-        m_cgi_state      = CGI_COMPLETE;
-        std::string term = "0\r\n\r\n";
-        m_body_buffer.insert(m_body_buffer.end(), term.begin(), term.end());
+        m_cgi_state = CGI_COMPLETE;
+        if (m_is_chunked_response)
+        {
+            std::string term = "0\r\n\r\n";
+            m_body_buffer.insert(m_body_buffer.end(), term.begin(), term.end());
+        }
     }
 }
 
