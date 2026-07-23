@@ -1,9 +1,7 @@
 #include "CGI.hpp"
 
-CGI::CGI() : m_pipe_in(), m_pipe_out(), m_pid(-1), m_start_time(0)
+CGI::CGI() : m_pipe_out(), m_pid(-1), m_start_time(0)
 {
-    m_pipe_in[0]  = -1;
-    m_pipe_in[1]  = -1;
     m_pipe_out[0] = -1;
     m_pipe_out[1] = -1;
 }
@@ -18,11 +16,6 @@ CGI::~CGI()
 int CGI::getOutFd() const
 {
     return m_pipe_out[0];
-}
-
-int CGI::getInFd() const
-{
-    return m_pipe_in[1];
 }
 
 pid_t CGI::getPid() const
@@ -46,56 +39,73 @@ void CGI::freeEnvArgv()
  * @req: The HTTP request
  * @scriptPath: The path to the CGI script
  */
-void CGI::execute(const Request &req, const std::string &scriptPath)
+void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
 {
-    if (pipe(m_pipe_in) == -1 || pipe(m_pipe_out) == -1)
+    if (pipe(m_pipe_out) == -1)
     {
-        abort("Failed to create pipes for CGI execution");
+        abort("Failed to create pipe for CGI execution"); // Throw execption so that we can handle it in the connection
+                                                          // and send 500 error to the client
     }
 
     buildEnv(req);
-    buildArgv(scriptPath);
+    buildArgv(cgiMeta);
 
     m_start_time = time(NULL);
 
     m_pid = fork();
     if (m_pid < 0)
     {
-        abort("Failed to fork for CGI execution");
+        abort("Failed to fork for CGI execution"); // Throw execption so that we can handle it in the connection and
+                                                   // send 500 error to the client
     }
     else if (m_pid == 0)
     {
         /* Child process */
-        dup2(m_pipe_in[0], STDIN_FILENO);
-        dup2(m_pipe_out[1], STDOUT_FILENO);
+        const std::string &body_file = req.getBodyFilename();
 
-        close(m_pipe_in[0]);
+        int fd_in = -1;
+        if (!body_file.empty())
+            fd_in = open(body_file.c_str(), O_RDONLY);
+
+        if (fd_in == -1)
+            fd_in = open("/dev/null", O_RDONLY);
+
+        if (fd_in == -1)
+        {
+            LOG_ERROR("CGI") << "Failed to open request body file: " << body_file << "\n";
+            std::exit(127);
+        }
+
+        dup2(fd_in, STDIN_FILENO);
+        close(fd_in);
+
+        dup2(m_pipe_out[1], STDOUT_FILENO);
         close(m_pipe_out[1]);
-        close(m_pipe_in[1]);
         close(m_pipe_out[0]);
 
-        execve(scriptPath.c_str(), m_argv.data(), m_envp.data());
+        std::string exec_path = cgiMeta.interpreter_path.empty() ? cgiMeta.script_path : cgiMeta.interpreter_path;
+        execve(exec_path.c_str(), m_argv.data(), m_envp.data());
         std::exit(127);
-        // abort("Failed to execute CGI script");
     }
     else
     {
         /* Parent process */
-        close(m_pipe_in[0]);
-        m_pipe_in[0] = -1;
         close(m_pipe_out[1]);
         m_pipe_out[1] = -1;
 
-        int in_flags  = fcntl(m_pipe_in[1], F_GETFL, 0);
         int out_flags = fcntl(m_pipe_out[0], F_GETFL, 0);
-        if (in_flags == -1 || out_flags == -1)
-            abort("fcntl F_GETFL");
-        if (fcntl(m_pipe_in[1], F_SETFL, in_flags | O_NONBLOCK) == -1 ||
-            fcntl(m_pipe_out[0], F_SETFL, out_flags | O_NONBLOCK) == -1)
-            abort("fcntl F_SETFL");
-        if (fcntl(m_pipe_in[1], F_SETFD, FD_CLOEXEC) == -1 || fcntl(m_pipe_out[0], F_SETFD, FD_CLOEXEC) == -1)
-            abort("fcntl F_SETFD");
-        LOG_INFO("CGI") << "RUN=\"" << scriptPath << "\"\n";
+        if (out_flags == -1)
+            abort("Failed to get flags for CGI output pipe"); // Throw execption so that we can handle it in the
+                                                              // connection and send 500 error to the client
+        if (fcntl(m_pipe_out[0], F_SETFL, out_flags | O_NONBLOCK) == -1)
+            abort("Failed to set non-blocking flag for CGI output pipe"); // Throw execption so that we can handle it in
+                                                                          // the connection and send 500 error to the
+                                                                          // client
+        if (fcntl(m_pipe_out[0], F_SETFD, FD_CLOEXEC) == -1)
+            abort("Failed to set close-on-exec flag for CGI output pipe"); // Throw execption so that we can handle it
+                                                                           // in the connection and send 500 error to
+                                                                           // the client
+        LOG_INFO("CGI") << "RUN=\"" << cgiMeta.script_path << "\"\n";
     }
 }
 
@@ -146,9 +156,12 @@ void CGI::buildEnv(const Request &req)
  * buildArgv - Build the argument vector for the CGI script execution
  * @scriptPath: The path to the CGI script
  */
-void CGI::buildArgv(const std::string &scriptPath)
+void CGI::buildArgv(const CgiMetaData &cgiMeta)
 {
-    m_argv.push_back(strdup(scriptPath.c_str()));
+    if (!cgiMeta.interpreter_path.empty())
+        m_argv.push_back(strdup(cgiMeta.interpreter_path.c_str()));
+
+    m_argv.push_back(strdup(cgiMeta.script_path.c_str()));
     m_argv.push_back(NULL);
 }
 
@@ -160,16 +173,6 @@ void CGI::waitAndClean()
     int status;
     reapIfExited(status);
 
-    if (m_pipe_in[0] != -1)
-    {
-        close(m_pipe_in[0]);
-        m_pipe_in[0] = -1;
-    }
-    if (m_pipe_in[1] != -1)
-    {
-        close(m_pipe_in[1]);
-        m_pipe_in[1] = -1;
-    }
     if (m_pipe_out[0] != -1)
     {
         close(m_pipe_out[0]);
