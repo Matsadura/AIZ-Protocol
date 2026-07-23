@@ -50,7 +50,7 @@ void test_content_length_streaming()
     assert(output.find("HTTP/1.1 200 OK\r\n") != std::string::npos);
     assert(output.find("Content-Type: text/plain\r\n") != std::string::npos);
     assert(output.find("Content-Length: 13\r\n") != std::string::npos);
-    
+
     // Ensure chunked encoding is explicitly missing
     assert(output.find("Transfer-Encoding: chunked\r\n") == std::string::npos);
 
@@ -61,7 +61,7 @@ void test_content_length_streaming()
     // 5. Clear buffer and test terminal chunk prevention
     cgi.consumeBodyChunk(cgi.getBodyBuffer().size());
     cgi.appendTerminalChunk();
-    
+
     const std::vector<char> &term_buffer = cgi.getBodyBuffer();
     assert(term_buffer.empty()); // The terminal "0\r\n\r\n" MUST NOT be injected
     assert(cgi.getCgiState() == CGIResponse::CGI_COMPLETE);

@@ -38,6 +38,7 @@ int Connections::accept_new(int fd, Multiplexer &server)
     cennRef.closing        = false;
     cennRef.cgi_active     = false;
     cennRef.config         = server.get_config(fd);
+    cennRef.response       = NULL;
     if (cennRef.config == NULL)
     {
         UNREACHABLE("get_config should never return a null value\n");
@@ -58,12 +59,13 @@ void Connections::close_connection(int sockfd, Multiplexer &server)
     if (conn->cgi_active)
     {
         server.remove_interest(*conn, Multiplexer::CGI_STDOUT);
-        conn->cgi.waitAndClean();
+        conn->cgi.waitAndClean(); // TODO: Mybe Kill the process?
     }
 
     LOG_INFO("CONNECTIONS") << "Close (fd=" << sockfd << ") connection\n";
     server.remove_interest(*conn, Multiplexer::CLIENT);
     close(sockfd);
+    delete conn->response;
     m_list.erase(sockfd);
 }
 

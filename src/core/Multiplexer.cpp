@@ -172,6 +172,24 @@ void Multiplexer::sock_handle_write(Connections::connection_t &conn)
             conn.cgi_response.consumeBodyChunk(count);
         }
     }
+    else if (conn.response)
+    {
+        const char *data = conn.response->getResponseBuffer().data();
+        size_t      size = conn.response->getResponseBuffer().size();
+
+        long count = write(conn.sockfd, data, size);
+
+        LOG_INFO("SOCKET") << "Send=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
+
+        if (count <= 0)
+        {
+            conn.closing = true;
+        }
+        else
+        {
+            conn.response->consume(count);
+        }
+    }
 }
 
 void Multiplexer::sock_handle_read(Connections::connection_t &conn)
@@ -201,7 +219,11 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
 
     LOG_INFO("SOCKET") << "RECIEVED=" << COLOR_LIGHT_RED << n << RESET " (id=" << conn.sockfd << ")\n";
 
-    if (conn.req.isReadyForRouting() && !conn.cgi_active) // TODO: check if response is already calculated
+    if (conn.req.getState() == Request::ERROR)
+    {
+        LOG_INFO("REQUEST") << "HTTP_Error_Code=" << conn.req.getErrorCode() << "\n";
+    }
+    if (conn.req.isReadyForRouting() && !conn.cgi_active && !conn.response)
     {
         CgiMetaData cgi_meta = is_cgi_request(*conn.config, conn.req);
 
@@ -218,12 +240,10 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
         }
         else
         {
-            UNIMPLEMENTED("Use router to route none cgi request");
+            Router       router(*conn.config, conn.req.getPath(), conn.req.getMethod());
+            RouterResult result = router.get_result();
+            conn.response       = new Response(result); // TODO: Make sure you always delete this
         }
-    }
-    if (conn.req.getState() == Request::ERROR)
-    {
-        LOG_INFO("REQUEST") << "HTTP_Error_Code=" << conn.req.getErrorCode() << "\n";
     }
 }
 
@@ -305,6 +325,10 @@ void Multiplexer::update_events(Connections::connection_t &conn)
             client_events |= EPOLLOUT;
             modify_interest(conn, CGI_STDOUT, 0);
         }
+    }
+    else if (conn.response && conn.response->isFinished())
+    {
+        client_events = 0;
     }
     modify_interest(conn, CLIENT, client_events);
 }

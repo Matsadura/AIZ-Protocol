@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Request/Request.hpp"
 #include "../config_file_parser/parser/configfile.hpp"
 #include "../core/Common.h"

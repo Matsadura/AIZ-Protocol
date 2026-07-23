@@ -4,6 +4,7 @@
 #include "../../src/Request/Request.hpp"
 #include "../CGI/CGI.hpp"
 #include "../CGI/CGIResponse.hpp"
+#include "../Response/Response.hpp"
 #include "../config_file_parser/parser/configfile.hpp"
 #include "Common.h"
 
@@ -20,6 +21,7 @@ class Connections
         struct sockaddr_storage addr;
         int                     sockfd;
         s_Server               *config;
+        Response               *response;
         Request                 req;
         uint32_t                sock_events;
 
