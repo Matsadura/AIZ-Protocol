@@ -219,24 +219,26 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
 
     LOG_INFO("SOCKET") << "RECIEVED=" << COLOR_LIGHT_RED << n << RESET " (id=" << conn.sockfd << ")\n";
 
+    if (conn.cgi_active || conn.response)
+    {
+        return;
+    }
+
     if (conn.req.getState() == Request::ERROR)
     {
         LOG_INFO("REQUEST") << "HTTP_Error_Code=" << conn.req.getErrorCode() << "\n";
+        RouterResult result = Router::init_error_result(*conn.config, conn.req.getErrorCode());
+        conn.response       = new Response(result); // TODO: Make sure you always delete this
     }
-    if (conn.req.isReadyForRouting() && !conn.cgi_active && !conn.response)
+    else if (conn.req.isReadyForRouting())
     {
         CgiMetaData cgi_meta = is_cgi_request(*conn.config, conn.req);
 
         if (cgi_meta.is_cgi)
         {
-            std::cout << "CGI script: " << cgi_meta.script_path << "\n";
-            std::cout << "CGI path info: " << cgi_meta.path_info << "\n";
-            std::cout << "CGI interpreter path: " << cgi_meta.interpreter_path << "\n";
             conn.cgi.execute(conn.req, cgi_meta);
             conn.cgi_active = true;
-            add_interest(conn, CGI_STDOUT, 0);
-            conn.req.isReadyForBodyParsing();
-            conn.req.appendDataAndParse(buff, 0);
+            add_interest(conn, CGI_STDOUT, EPOLLIN);
         }
         else
         {
@@ -244,6 +246,8 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
             RouterResult result = router.get_result();
             conn.response       = new Response(result); // TODO: Make sure you always delete this
         }
+        conn.req.isReadyForBodyParsing();
+        conn.req.appendDataAndParse(buff, 0);
     }
 }
 
@@ -298,12 +302,9 @@ void Multiplexer::update_events(Connections::connection_t &conn)
     uint32_t client_events = 0;
 
     bool req_complete = conn.req.getState() == Request::COMPLETE;
+    bool req_error    = conn.req.getState() == Request::ERROR;
 
-    if (req_complete)
-    {
-        client_events |= EPOLLOUT;
-    }
-    else
+    if (!req_complete && !req_error)
     {
         client_events |= EPOLLIN;
     }
@@ -316,7 +317,6 @@ void Multiplexer::update_events(Connections::connection_t &conn)
 
         if (cgi_res_complete && cgi_res_empty)
         {
-            remove_interest(conn, CGI_STDOUT);
             conn.closing = true; // TODO: This will close the connection immediately should we persist the connection?
                                  // or should we act according the keep-alive header?
         }
@@ -325,10 +325,18 @@ void Multiplexer::update_events(Connections::connection_t &conn)
             client_events |= EPOLLOUT;
             modify_interest(conn, CGI_STDOUT, 0);
         }
+        else
+        {
+            modify_interest(conn, CGI_STDOUT, EPOLLIN);
+        }
     }
-    else if (conn.response && conn.response->isFinished())
+    else if (conn.response && !conn.response->isFinished())
     {
-        client_events = 0;
+        client_events |= EPOLLOUT;
+    }
+    else if (conn.response->isFinished())
+    {
+        conn.closing = true;
     }
     modify_interest(conn, CLIENT, client_events);
 }
