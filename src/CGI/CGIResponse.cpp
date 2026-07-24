@@ -105,7 +105,10 @@ std::string CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi
         if (!loc.empty() && loc[0] == '/')
             m_is_local_redirect = true;
         else
+        {
             status = "302 Found";
+            http_headers << "Location: " << loc << "\r\n";
+        }
     }
 
     http_headers << "HTTP/1.1 " << status << "\r\n";
