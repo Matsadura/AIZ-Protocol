@@ -8,6 +8,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <cstdio>
 #include <sstream>
 #include <stdexcept>
 #include <string>
