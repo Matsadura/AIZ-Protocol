@@ -258,7 +258,7 @@ void Request::reset(int reset_type)
     }
     if (m_is_generated_temp_file && !m_body_filename.empty())
     {
-        unlink(m_body_filename.c_str());
+        std::remove(m_body_filename.c_str());
     }
     m_body_filename.clear();
     m_is_generated_temp_file = false;
