@@ -39,6 +39,7 @@ bool Request::isReadyForBodyParsing()
                 return false;
             }
         }
+        m_is_generated_temp_file = true;
         return true;
     }
     return false;
@@ -59,6 +60,7 @@ bool Request::isReadyForBodyParsing(const std::string &filename)
             setError(500);
             return false;
         }
+        m_is_generated_temp_file = false;
         return true;
     }
     return false;
