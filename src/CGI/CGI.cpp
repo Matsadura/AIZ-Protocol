@@ -105,7 +105,7 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
             abort("Failed to set close-on-exec flag for CGI output pipe"); // Throw execption so that we can handle it
                                                                            // in the connection and send 500 error to
                                                                            // the client
-        LOG_INFO("CGI") << "RUN=\"" << cgiMeta.script_path << "\"\n";
+        LOG_INFO("CGI") << "EXECUTE=" << cgiMeta.script_path << " Interpreter=" << cgiMeta.interpreter_path << "\n";
     }
 }
 
@@ -222,7 +222,8 @@ bool CGI::exitedWithFailure(int status)
 
     if (failed)
     {
-        LOG_ERROR("CGI") << "Script: \"" << m_argv[0] << "\" Failed! Raison: " << describeStatus(status) << "\n";
+        LOG_ERROR("CGI") << "Running: [\"" << m_argv[0] << "\" \"" << m_argv[1] << "\"] Failed ("
+                         << describeStatus(status) << ")\n";
     }
 
     return failed;

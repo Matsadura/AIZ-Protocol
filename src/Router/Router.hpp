@@ -27,6 +27,11 @@ class Router
     Router(const s_Server &server, const std::string &uri, const std::string &method);
     RouterResult get_result();
 
+    /**
+     * Get RouterResult of an error page, this can be feed directly to the response generator
+     */
+    static RouterResult init_error_result(const s_Server &server, int http_code);
+
     // helper to init RouterResult
     RouterResult init_error_result(int http_code);
     RouterResult http_not_found();

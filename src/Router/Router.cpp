@@ -22,6 +22,12 @@ RouterResult Router::get_result()
     return http_method_not_allowed();
 }
 
+RouterResult Router::init_error_result(const s_Server &server, int http_code)
+{
+    const std::string &file_path = RouterResource::get_default_page(server, http_code);
+    return RouterResult(http_code, file_path, RouterResult::FILE_PATH);
+}
+
 RouterResult Router::init_error_result(int http_code)
 {
     const std::string &file_path = RouterResource::get_default_page(m_server, http_code);
@@ -219,20 +225,24 @@ CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
         if (i == disk_path.size() || disk_path[i] == '/')
         {
             std::string current_path = disk_path.substr(0, i);
+            if (!is_file_regular(current_path))
+            {
+                continue;
+            }
+
             // TODO: Not save! location->root will be counted going above root will happen anyway
             if (!RouterResource::path_traverse_is_safe(current_path))
             {
-                return CgiMetaData();
+                LOG_DEBUG("ROUTER") << "PATH=" << current_path << " => escapes root, rejected!\n";
+                continue;
             }
-            if (is_file_regular(current_path))
+
+            script_path = current_path;
+            if (i < disk_path.size())
             {
-                script_path = current_path;
-                if (i < disk_path.size())
-                {
-                    path_info = disk_path.substr(i);
-                }
-                break;
+                path_info = disk_path.substr(i);
             }
+            break;
         }
     }
 
@@ -251,6 +261,8 @@ CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
 
         if (it != location->CGIhandlers.end())
         {
+            LOG_DEBUG("ROUTER") << "[URI=" << req.getPath() << "]" << " [config_loc=" << location->path
+                                << "] Recognized as CGI: $(" << it->second << " " << script_path << ")\n";
             return CgiMetaData(true, script_path, path_info, it->second);
         }
     }
