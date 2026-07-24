@@ -20,7 +20,7 @@ class CGI
     std::vector<char *> m_envp;
     std::vector<char *> m_argv;
 
-    void buildEnv(const Request &req);
+    void buildEnv(const Request &req, const CgiMetaData &cgiMeta);
     void buildArgv(const CgiMetaData &cgiMeta);
     void freeEnvArgv();
 

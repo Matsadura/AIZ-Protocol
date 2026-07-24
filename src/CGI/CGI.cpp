@@ -1,4 +1,5 @@
 #include "CGI.hpp"
+#include <cstddef>
 
 CGI::CGI() : m_pipe_out(), m_pid(-1), m_start_time(0)
 {
@@ -47,7 +48,7 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
                                                           // and send 500 error to the client
     }
 
-    buildEnv(req);
+    buildEnv(req, cgiMeta);
     buildArgv(cgiMeta);
 
     m_start_time = time(NULL);
@@ -112,25 +113,45 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
 /**
  * buildEnv - Build the environment variables for the CGI script execution
  * @req: The HTTP request
+ * @cgiMeta: The CGI metadata
  */
-void CGI::buildEnv(const Request &req)
+void CGI::buildEnv(const Request &req, const CgiMetaData &cgiMeta)
 {
     std::map<std::string, std::string> env_vars;
 
-    env_vars["REQUEST_METHOD"]  = req.getMethod();
-    env_vars["REQUEST_URI"]     = req.getURI();
-    env_vars["QUERY_STRING"]    = req.getQuery();
-    env_vars["SERVER_PROTOCOL"] = req.getVersion();
-    env_vars["SCRIPT_NAME"]     = req.getPath();
+    env_vars["GATEWAY_INTERFACE"] = "CGI/1.1";
+    env_vars["SERVER_SOFTWARE"]   = "AIZ/1.0";
+    env_vars["REQUEST_METHOD"]    = req.getMethod();
+    env_vars["REQUEST_URI"]       = req.getURI();
+    env_vars["QUERY_STRING"]      = req.getQuery();
+    env_vars["SERVER_PROTOCOL"]   = req.getVersion();
+    env_vars["SCRIPT_NAME"]       = req.getPath();
+
+    if (!cgiMeta.path_info.empty())
+    {
+        env_vars["PATH_INFO"]       = cgiMeta.path_info;
+        env_vars["PATH_TRANSLATED"] = cgiMeta.path_info;
+    }
 
     if (req.getHeaders().count("content-length"))
-    {
         env_vars["CONTENT_LENGTH"] = req.getHeader("content-length");
-    }
     if (req.getHeaders().count("content-type"))
-    {
         env_vars["CONTENT_TYPE"] = req.getHeader("content-type");
+
+    std::string host_header = req.getHeader("host");
+    size_t      colon_pos   = host_header.find(':');
+    if (colon_pos != std::string::npos)
+    {
+        env_vars["SERVER_NAME"] = host_header.substr(0, colon_pos);
+        env_vars["SERVER_PORT"] = host_header.substr(colon_pos + 1);
     }
+    else
+    {
+        env_vars["SERVER_NAME"] = host_header;
+        env_vars["SERVER_PORT"] = "80";    // ALI CHANGE THIS ILA KNTI DAYR HAJA KHRA LIKE 8080
+    }
+
+    env_vars["REMOTE_ADDR"] = "127.0.0.1"; // ALI UPDATE THIS WHEN THE CLIENT IP IS PASSED FROM THE CONNECTION SOCKET
 
     std::map<std::string, std::string> headers = req.getHeaders();
     for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it)
