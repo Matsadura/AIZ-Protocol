@@ -92,6 +92,7 @@ class Request
     int         m_body_fd;
     std::string m_body_filename;
     size_t      m_body_bytes_read;
+    bool        m_is_generated_temp_file;
 
     bool   m_is_chunked;
     size_t m_content_length;

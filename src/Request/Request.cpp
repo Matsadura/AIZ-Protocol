@@ -14,6 +14,7 @@ Request::Request(void) :
     m_max_body_size(1024 * 1024),
     m_body_fd(-1),
     m_body_bytes_read(0),
+    m_is_generated_temp_file(false),
     m_is_chunked(false),
     m_content_length(0),
     m_chunk_state(CHUNK_SIZE),
@@ -39,6 +40,7 @@ Request::Request(const Request &other) :
     m_body_fd(-1),
     m_body_filename(other.m_body_filename),
     m_body_bytes_read(other.m_body_bytes_read),
+    m_is_generated_temp_file(other.m_is_generated_temp_file),
     m_is_chunked(other.m_is_chunked),
     m_content_length(other.m_content_length),
     m_chunk_state(other.m_chunk_state),
@@ -82,6 +84,10 @@ Request::~Request(void)
     if (m_body_fd != -1)
     {
         close(m_body_fd);
+    }
+    if (m_is_generated_temp_file && !m_body_filename.empty())
+    {
+        unlink(m_body_filename.c_str());
     }
 }
 
@@ -250,13 +256,17 @@ void Request::reset(int reset_type)
         close(m_body_fd);
         m_body_fd = -1;
     }
+    if (m_is_generated_temp_file && !m_body_filename.empty())
+    {
+        unlink(m_body_filename.c_str());
+    }
     m_body_filename.clear();
-
-    m_is_chunked            = false;
-    m_content_length        = 0;
-    m_chunk_state           = CHUNK_SIZE;
-    m_chunk_bytes_remaining = 0;
-    m_body_bytes_read       = 0;
+    m_is_generated_temp_file = false;
+    m_is_chunked             = false;
+    m_content_length         = 0;
+    m_chunk_state            = CHUNK_SIZE;
+    m_chunk_bytes_remaining  = 0;
+    m_body_bytes_read        = 0;
 }
 
 /**
