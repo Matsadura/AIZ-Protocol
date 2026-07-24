@@ -45,6 +45,11 @@ bool CGIResponse::isBufferFull() const
     return m_body_buffer.size() >= CHUNK_SIZE_LIMIT;
 }
 
+std::size_t CGIResponse::getAlreadySendCount() const
+{
+    return m_already_send_count;
+}
+
 /**
  * appendCgiData - Appends CGI data and formats it immediately into HTTP chunks.
  * @data: A pointer to the data to be appended.
@@ -289,16 +294,6 @@ void CGIResponse::generateErrorResponse(int error_code)
 {
     if (error_code == 0)
         return;
-
-    if (m_already_send_count != 0)
-    {
-        // This is used when we already send some data and suddenly the script failed, sending error in this case is
-        // fatel, its better to only close the request without sending the error
-        m_body_buffer.clear();
-        m_cgi_state  = CGI_COMPLETE;
-        m_error_code = error_code;
-        return;
-    }
 
     m_body_buffer.clear();
     m_cgi_state  = CGI_COMPLETE;

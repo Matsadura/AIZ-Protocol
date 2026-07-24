@@ -1,6 +1,7 @@
 #pragma once
 #include "../../src/core/Common.h"
 #include "../../src/utils/utils.hpp"
+#include <cstddef>
 #include <map>
 #include <vector>
 
@@ -23,11 +24,12 @@ class CGIResponse
     void               consumeBodyChunk(size_t length);
     bool               isBufferFull() const;
 
-    void     setCgiState(CgiState state);
-    CgiState getCgiState() const;
-    int      getErrorCode() const;
-    void     generateErrorResponse(int error_code);
-    bool     isLocalRedirect() const;
+    void        setCgiState(CgiState state);
+    CgiState    getCgiState() const;
+    int         getErrorCode() const;
+    void        generateErrorResponse(int error_code);
+    bool        isLocalRedirect() const;
+    std::size_t getAlreadySendCount() const;
 
     std::string translateToHttp(std::map<std::string, std::string> &cgi_headers);
 
