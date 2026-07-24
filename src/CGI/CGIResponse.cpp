@@ -301,17 +301,6 @@ void CGIResponse::generateErrorResponse(int error_code)
     }
 
     m_body_buffer.clear();
-
-    std::ostringstream response;
-    response << "HTTP/1.1 " << error_code << " Error\r\n";
-    response << "Content-Type: text/plain\r\n";
-    response << "Content-Length: 0\r\n";
-    response << "\r\n";
-
-    std::string err_str = response.str();
-
-    m_body_buffer.insert(m_body_buffer.end(), err_str.begin(), err_str.end());
-
     m_cgi_state  = CGI_COMPLETE;
     m_error_code = error_code;
 }
