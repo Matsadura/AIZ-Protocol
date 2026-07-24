@@ -1,6 +1,9 @@
 #include "Request.hpp"
 #include <cerrno>
+#include <cstdlib>
+#include <ctime>
 #include <fcntl.h>
+#include <sstream>
 #include <unistd.h>
 
 /**
@@ -10,15 +13,32 @@ bool Request::isReadyForBodyParsing()
 {
     if (m_state != COMPLETE)
     {
-        m_state             = BODY;
-        char tmp_template[] = "/tmp/ws_body_XXXXXX";
-        m_body_fd           = mkstemp(tmp_template);
-        if (m_body_fd == -1)
+        m_state = BODY;
+
+        static bool seeded = false;
+        if (!seeded)
         {
-            setError(500);
-            return false;
+            std::srand(static_cast<unsigned int>(std::time(NULL)));
+            seeded = true;
         }
-        m_body_filename = tmp_template;
+
+        while (true)
+        {
+            std::ostringstream oss;
+            oss << "/tmp/ws_body_" << std::time(NULL) << "_" << std::rand();
+            m_body_filename = oss.str();
+
+            m_body_fd = open(m_body_filename.c_str(), O_RDWR | O_CREAT | O_EXCL, 0600);
+
+            if (m_body_fd != -1)
+                break;
+
+            if (errno != EEXIST)
+            {
+                setError(500);
+                return false;
+            }
+        }
         return true;
     }
     return false;
