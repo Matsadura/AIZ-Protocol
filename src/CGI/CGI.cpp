@@ -84,6 +84,17 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
         close(m_pipe_out[1]);
         close(m_pipe_out[0]);
 
+        size_t slash_pos = cgiMeta.script_path.find_last_of('/');
+        if (slash_pos != std::string::npos)
+        {
+            std::string cgi_dir = cgiMeta.script_path.substr(0, slash_pos);
+            if (chdir(cgi_dir.c_str()) == -1)
+            {
+                LOG_ERROR("CGI") << "Failed to chdir to " << cgi_dir << "\n";
+                std::exit(127);
+            }
+        }
+
         std::string exec_path = cgiMeta.interpreter_path.empty() ? cgiMeta.script_path : cgiMeta.interpreter_path;
         execve(exec_path.c_str(), m_argv.data(), m_envp.data());
         std::exit(127);
@@ -148,10 +159,11 @@ void CGI::buildEnv(const Request &req, const CgiMetaData &cgiMeta)
     else
     {
         env_vars["SERVER_NAME"] = host_header;
-        env_vars["SERVER_PORT"] = "80";    // ALI CHANGE THIS ILA KNTI DAYR HAJA KHRA LIKE 8080
+        env_vars["SERVER_PORT"] = "80"; // TODO: ALI CHANGE THIS ILA KNTI DAYR HAJA KHRA LIKE 8080
     }
 
-    env_vars["REMOTE_ADDR"] = "127.0.0.1"; // ALI UPDATE THIS WHEN THE CLIENT IP IS PASSED FROM THE CONNECTION SOCKET
+    env_vars["REMOTE_ADDR"] =
+        "127.0.0.1"; // TODO: ALI UPDATE THIS WHEN THE CLIENT IP IS PASSED FROM THE CONNECTION SOCKET
 
     std::map<std::string, std::string> headers = req.getHeaders();
     for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it)
