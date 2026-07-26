@@ -29,8 +29,21 @@ int Connections::accept_new(int fd, Multiplexer &server)
         abort("accept");
     LOG_INFO("CONNECTIONS") << "New connection accepted (fd=" << conn.sockfd << ") from "
                             << addr_to_string(reinterpret_cast<struct sockaddr_in *>(&conn.addr)) << "\n";
-    server.start_monitor_conn(conn.sockfd);
-    m_list[conn.sockfd] = conn;
+    m_list[conn.sockfd]   = conn;
+    connection_t &cennRef = m_list[conn.sockfd];
+
+    cennRef.cgi_in_events  = EPOLL_NOT_REGISTERED;
+    cennRef.cgi_out_events = EPOLL_NOT_REGISTERED;
+    cennRef.sock_events    = EPOLL_NOT_REGISTERED;
+    cennRef.closing        = false;
+    cennRef.cgi_active     = false;
+    cennRef.config         = server.get_config(fd);
+    cennRef.response       = NULL;
+    if (cennRef.config == NULL)
+    {
+        UNREACHABLE("get_config should never return a null value\n");
+    }
+    server.add_interest(cennRef, Multiplexer::CLIENT, EPOLLIN);
     return conn.sockfd;
 }
 
@@ -39,59 +52,31 @@ int Connections::accept_new(int fd, Multiplexer &server)
  */
 void Connections::close_connection(int sockfd, Multiplexer &server)
 {
+    connection_t *conn = find(sockfd);
+    if (conn == NULL)
+        return;
+
+    if (conn->cgi_active)
+    {
+        server.remove_interest(*conn, Multiplexer::CGI_STDOUT);
+        conn->cgi.waitAndClean(); // TODO: Mybe Kill the process?
+    }
+
     LOG_INFO("CONNECTIONS") << "Close (fd=" << sockfd << ") connection\n";
-    m_list.erase(sockfd);
-    server.stop_monitor_conn(sockfd);
+    server.remove_interest(*conn, Multiplexer::CLIENT);
     close(sockfd);
+    delete conn->response;
+    m_list.erase(sockfd);
 }
 
 /**
  * Grab a direct reference to an ongoing connection's data state
  */
-Connections::connection_t &Connections::find(int sockfd)
+Connections::connection_t *Connections::find(int sockfd)
 {
     std::map<int, connection_t>::iterator it;
     it = m_list.find(sockfd);
-    if (it != m_list.end())
-    {
-        return it->second;
-    }
-    UNREACHABLE("Epoll gives a none existing socket address, maybe forget to stop_monitoring it?");
-}
-
-/**
- * Read incoming data from a ready socket and feed it into the request parser
- *
- * @sockfd The file descriptor signaling that data is available to read
- * @server The multiplexer managing this connection's state
- */
-void Connections::conn_handle_read(int sockfd, Multiplexer &server)
-{
-    Connections::connection_t &conn = Connections::find(sockfd);
-    char                       buff[4096];
-    ssize_t                    n;
-
-    n = recv(sockfd, buff, sizeof(buff), 0); // @todo: I don't know the use of 4th param!
-    if (n == 0)
-    {
-        LOG_INFO("CONNECTIONS") << "Read peer shutdown (fd=" << sockfd << ")\n";
-        close_connection(sockfd, server);
-        return;
-    }
-    else if (n == -1)
-    {
-        LOG_ERROR("CONNECTIONS") << "Read (recv) failed (fd=" << sockfd << ")\n";
-        close_connection(sockfd, server);
-        return;
-    }
-    conn.req.appendDataAndParse(buff, n);
-    LOG_INFO("REQUEST") << n << " bytes appended (fd=" << sockfd << ")\n";
-    LOG_INFO("REQUEST") << "State: " << conn.req.getState() << " (fd=" << sockfd << ")\n";
-    if (conn.req.getState() == Request::COMPLETE)
-    {
-        LOG_INFO("REQUEST") << "[REQUEST] Parsing is completed (fd=" << sockfd << ")\n";
-        server.switch_conn_interest(sockfd, EPOLLOUT);
-    }
+    return it == m_list.end() ? NULL : &it->second;
 }
 
 Connections::~Connections()

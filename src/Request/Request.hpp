@@ -34,7 +34,6 @@ class Request
         HEADERS,
         HEADERS_COMPLETE,
         BODY,
-        BODY_CHUNK_READY,
         COMPLETE,
         ERROR
     };
@@ -55,7 +54,8 @@ class Request
     void appendDataAndParse(const char *data, size_t length);
     void setMaxBodySize(size_t max_size);
 
-    bool isReadyForBodyParsing(bool yes_no);
+    bool isReadyForBodyParsing();
+    bool isReadyForBodyParsing(const std::string &filename);
     bool isReadyForRouting(void) const;
 
     void        setError(int error_code);
@@ -72,14 +72,11 @@ class Request
     std::string                        getVersion(void) const;
     std::string                        getHeader(const std::string &key) const;
     std::map<std::string, std::string> getHeaders(void) const;
-    const std::vector<char>           &getBody(void) const;
-    const std::string                 &getRawBuffer(void) const;
 
-    void consumeBodyChunk();
+    const std::string &getRawBuffer(void) const;
+    const std::string &getBodyFilename(void) const;
 
   private:
-    static const size_t CHUNK_SIZE_LIMIT = 64 * 1024;
-
     ParserState m_state;
     std::string m_raw_buffer;
     int         m_error_code;
@@ -91,9 +88,10 @@ class Request
     std::string                        m_query;
     std::string                        m_version;
     std::map<std::string, std::string> m_headers;
-    std::vector<char>                  m_body;
 
-    size_t m_body_bytes_read;
+    int         m_body_fd;
+    std::string m_body_filename;
+    size_t      m_body_bytes_read;
 
     bool   m_is_chunked;
     size_t m_content_length;

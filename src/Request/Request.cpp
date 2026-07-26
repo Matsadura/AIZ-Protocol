@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <cstddef>
 #include <cstdlib>
+#include <unistd.h>
 #include <vector>
 
 /**
@@ -11,6 +12,7 @@ Request::Request(void) :
     m_state(REQUEST_LINE),
     m_error_code(0),
     m_max_body_size(1024 * 1024),
+    m_body_fd(-1),
     m_body_bytes_read(0),
     m_is_chunked(false),
     m_content_length(0),
@@ -34,7 +36,8 @@ Request::Request(const Request &other) :
     m_query(other.m_query),
     m_version(other.m_version),
     m_headers(other.m_headers),
-    m_body(other.m_body),
+    m_body_fd(-1),
+    m_body_filename(other.m_body_filename),
     m_body_bytes_read(other.m_body_bytes_read),
     m_is_chunked(other.m_is_chunked),
     m_content_length(other.m_content_length),
@@ -62,7 +65,7 @@ Request &Request::operator=(const Request &other)
         m_query                 = other.m_query;
         m_version               = other.m_version;
         m_headers               = other.m_headers;
-        m_body                  = other.m_body;
+        m_body_filename         = other.m_body_filename;
         m_is_chunked            = other.m_is_chunked;
         m_content_length        = other.m_content_length;
         m_chunk_state           = other.m_chunk_state;
@@ -76,6 +79,10 @@ Request &Request::operator=(const Request &other)
  */
 Request::~Request(void)
 {
+    if (m_body_fd != -1)
+    {
+        close(m_body_fd);
+    }
 }
 
 /**
@@ -195,21 +202,21 @@ std::map<std::string, std::string> Request::getHeaders() const
 }
 
 /**
- * Get the body of the request as a vector of characters.
- * Return: A reference to the vector containing the request body.
- */
-const std::vector<char> &Request::getBody() const
-{
-    return m_body;
-}
-
-/**
  * Get the raw buffer containing the unprocessed request data.
  * Return: A reference to the string containing the raw request data.
  */
 const std::string &Request::getRawBuffer() const
 {
     return m_raw_buffer;
+}
+
+/**
+ * Get the filename of the request body file.
+ * Return: The filename as a string.
+ */
+const std::string &Request::getBodyFilename() const
+{
+    return m_body_filename;
 }
 
 /**
@@ -237,7 +244,14 @@ void Request::reset(int reset_type)
     m_query.clear();
     m_version.clear();
     m_headers.clear();
-    m_body.clear();
+
+    if (m_body_fd != -1)
+    {
+        close(m_body_fd);
+        m_body_fd = -1;
+    }
+    m_body_filename.clear();
+
     m_is_chunked            = false;
     m_content_length        = 0;
     m_chunk_state           = CHUNK_SIZE;
@@ -322,25 +336,18 @@ void Request::parseHeaders(void)
 
         if (!validateHeaderKeyFormat(key))
             return;
-
         key   = toLower(key);
         value = trim(value);
-
         if (!validateHeaderKeyNotEmpty(key))
             return;
-
         if (!validateHeaderNameCharacters(key))
             return;
-
         if (!validateHeaderValue(value))
             return;
-
         if (!validateHeaderHost(key, value))
             return;
-
         if (!validateHeaderDuplicates(key, value))
             return;
-
         if (!validateHeaderContentLength(key, value))
             return;
     }
@@ -401,25 +408,25 @@ bool Request::parseUnchunkedBody()
     if (!validateBodySize(bytes_to_append))
         return false;
 
-    size_t available_space = CHUNK_SIZE_LIMIT - m_body.size();
-    if (bytes_to_append > available_space)
+    if (m_body_fd != -1)
     {
-        bytes_to_append = available_space;
+        if (write(m_body_fd, m_raw_buffer.c_str(), bytes_to_append) < 0)
+        {
+            setError(500);
+            return false;
+        }
     }
 
-    m_body.insert(m_body.end(), m_raw_buffer.begin(),
-                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_to_append));
     m_raw_buffer.erase(0, bytes_to_append);
     m_body_bytes_read += bytes_to_append;
 
-    if (m_body.size() >= CHUNK_SIZE_LIMIT)
-    {
-        m_state = BODY_CHUNK_READY;
-        return false;
-    }
-
     if (m_body_bytes_read >= m_content_length)
     {
+        if (m_body_fd != -1)
+        {
+            close(m_body_fd);
+            m_body_fd = -1;
+        }
         m_state = COMPLETE;
         return true;
     }

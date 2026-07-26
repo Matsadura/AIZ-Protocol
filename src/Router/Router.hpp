@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Request/Request.hpp"
 #include "../config_file_parser/parser/configfile.hpp"
 #include "../core/Common.h"
@@ -25,6 +27,11 @@ class Router
     Router(const s_Server &server, const std::string &uri, const std::string &method);
     RouterResult get_result();
 
+    /**
+     * Get RouterResult of an error page, this can be feed directly to the response generator
+     */
+    static RouterResult init_error_result(const s_Server &server, int http_code);
+
     // helper to init RouterResult
     RouterResult init_error_result(int http_code);
     RouterResult http_not_found();
@@ -39,3 +46,23 @@ class Router
     RouterResult handle_delete();
     RouterResult handle_post();
 };
+
+struct CgiMetaData
+{
+    bool        is_cgi;
+    std::string script_path; // file system path of the script
+    std::string path_info;   // remainig charachters after the script path /cgi-bin/run.py/testing/hello
+                             // /testing/hello is the path_info
+    std::string interpreter_path;
+
+    CgiMetaData() : is_cgi(false)
+    {
+    }
+
+    CgiMetaData(bool is_cgi_val, const std::string &script, const std::string &info, const std::string &interpreter) :
+        is_cgi(is_cgi_val), script_path(script), path_info(info), interpreter_path(interpreter)
+    {
+    }
+};
+
+CgiMetaData is_cgi_request(const s_Server &server, const Request &req);

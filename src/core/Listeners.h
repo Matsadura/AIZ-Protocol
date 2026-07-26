@@ -1,6 +1,7 @@
 #ifndef LISTENERS_H
 #define LISTENERS_H
 
+#include "../config_file_parser/parser/configfile.hpp"
 #include "Common.h"
 #include "ListenerAddrInfo.h"
 
@@ -17,8 +18,9 @@ class Listeners
      * succeed immediately. Further connection requests block until a pending connection
      * is accepted (via accept()), and thus removed from the queue of pending connections.
      */
-    static int       PandingLimit;
-    std::vector<int> m_sockFds;
+    static int PandingLimit;
+    // std::vector<int>        m_sockFds;
+    std::map<int, s_Server> m_sockFds;
 
     /**
      * @note: this class is uncopyable
@@ -30,10 +32,10 @@ class Listeners
     Listeners();
     ~Listeners();
 
-    void        create_new(const char *nodeName, const char *port);
+    int         create_new(const s_Server &server);
     bool        contains(int fd);
+    s_Server   *get_listener_config(int fd);
     std::size_t size();
-    int         operator[](std::size_t index);
 };
 
 #endif

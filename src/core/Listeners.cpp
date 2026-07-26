@@ -1,4 +1,5 @@
 #include "Listeners.h"
+#include <sstream>
 
 int Listeners::PandingLimit = 1024;
 
@@ -19,17 +20,32 @@ Listeners &Listeners::operator=(const Listeners &other) // NOLINT
 
 Listeners::~Listeners()
 {
-    std::for_each(m_sockFds.begin(), m_sockFds.end(), close);
-    m_sockFds.clear();
+    for (std::map<int, s_Server>::iterator it = m_sockFds.begin(); it != m_sockFds.end(); ++it)
+    {
+        close(it->first);
+    }
+}
+
+std::string int_to_string(int n)
+{
+    std::stringstream ss;
+
+    ss << n;
+    return ss.str();
 }
 
 /**
  * Create a new listener socket, bind it to the specified address and port, and start listening for incoming connections
+ *
+ * Return: file descriptor of the listening socket
  */
-void Listeners::create_new(const char *nodeName, const char *port)
+int Listeners::create_new(const s_Server &server)
 {
-    ListenerAddrInfo ai(nodeName, port);
-    int sockfd;
+    std::string node_name = server.ports.begin()->first;
+    std::string port      = int_to_string(server.ports.begin()->second[0]);
+
+    ListenerAddrInfo ai(node_name.c_str(), port.c_str());
+    int              sockfd;
 
     sockfd  = socket(ai.family(), ai.sockType(), 0);
     int yes = 1;
@@ -46,7 +62,8 @@ void Listeners::create_new(const char *nodeName, const char *port)
         abort("lister");
 
     LOG_INFO("LISTENERS") << "Listening at " << ai.toString() << " (fd=" << sockfd << ")\n";
-    m_sockFds.push_back(sockfd);
+    m_sockFds[sockfd] = server;
+    return sockfd;
 }
 
 /**
@@ -57,7 +74,7 @@ void Listeners::create_new(const char *nodeName, const char *port)
  */
 bool Listeners::contains(int fd)
 {
-    return std::find(m_sockFds.begin(), m_sockFds.end(), fd) != m_sockFds.end();
+    return m_sockFds.find(fd) != m_sockFds.end();
 }
 
 /**
@@ -68,10 +85,13 @@ std::size_t Listeners::size()
     return m_sockFds.size();
 }
 
-/**
- * Get the file descriptor of the listener socket at the specified index
- */
-int Listeners::operator[](std::size_t index)
+s_Server *Listeners::get_listener_config(int fd)
 {
-    return m_sockFds.at(index);
+    std::map<int, s_Server>::iterator it = m_sockFds.find(fd);
+
+    if (it != m_sockFds.end())
+    {
+        return &(it->second);
+    }
+    return NULL;
 }

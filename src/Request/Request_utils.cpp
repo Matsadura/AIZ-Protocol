@@ -1,16 +1,44 @@
 #include "Request.hpp"
 #include <cerrno>
+#include <fcntl.h>
+#include <unistd.h>
 
 /**
- * Check if the request is ready for body parsing.
- * @state: The current state of the request.
- * Return: True if the request is ready for body parsing, false otherwise.
+ * Check if the request is ready for body parsing, generates a random temp file for the body.
  */
-bool Request::isReadyForBodyParsing(bool yes_no)
+bool Request::isReadyForBodyParsing()
 {
-    if (yes_no == true)
+    if (m_state != COMPLETE)
     {
-        m_state = BODY;
+        m_state             = BODY;
+        char tmp_template[] = "/tmp/ws_body_XXXXXX";
+        m_body_fd           = mkstemp(tmp_template);
+        if (m_body_fd == -1)
+        {
+            setError(500);
+            return false;
+        }
+        m_body_filename = tmp_template;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Check if the request is ready for body parsing, using the exact file provided by the multiplexer.
+ */
+bool Request::isReadyForBodyParsing(const std::string &filename)
+{
+    if (m_state != COMPLETE)
+    {
+        m_state         = BODY;
+        m_body_filename = filename;
+        m_body_fd       = open(m_body_filename.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+        if (m_body_fd == -1)
+        {
+            setError(500);
+            return false;
+        }
         return true;
     }
     return false;
@@ -25,17 +53,6 @@ bool Request::isReadyForRouting(void) const
     if (m_state == HEADERS_COMPLETE || m_state == COMPLETE)
         return true;
     return false;
-}
-
-/**
- * Consume a chunk of the request body.
- */
-void Request::consumeBodyChunk(void)
-{
-    m_body.clear();
-
-    if (m_state == BODY_CHUNK_READY)
-        m_state = BODY;
 }
 
 /**
@@ -582,25 +599,22 @@ bool Request::parseChunkData(void)
     if (!validateBodySize(bytes_to_append))
         return false;
 
-    size_t available_space = CHUNK_SIZE_LIMIT - m_body.size();
-    if (bytes_to_append > available_space)
-        bytes_to_append = available_space;
+    if (m_body_fd != -1)
+    {
+        if (write(m_body_fd, m_raw_buffer.c_str(), bytes_to_append) < 0)
+        {
+            setError(500);
+            return false;
+        }
+    }
 
-    m_body.insert(m_body.end(), m_raw_buffer.begin(),
-                  m_raw_buffer.begin() + static_cast<std::string::difference_type>(bytes_to_append));
     m_raw_buffer.erase(0, bytes_to_append);
     m_chunk_bytes_remaining -= bytes_to_append;
-
     m_body_bytes_read += bytes_to_append;
-
-    if (m_body.size() >= CHUNK_SIZE_LIMIT)
-    {
-        m_state = BODY_CHUNK_READY;
-        return false;
-    }
 
     if (m_chunk_bytes_remaining == 0)
         m_chunk_state = CHUNK_DATA_CRLF;
+
     return true;
 }
 
@@ -663,6 +677,9 @@ bool Request::parseChunkTrailer()
             return false;
 
         if (!validateHeaderValue(value))
+            return false;
+
+        if (!validateHeaderDuplicates(key, value))
             return false;
     }
 }
