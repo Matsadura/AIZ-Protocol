@@ -596,7 +596,11 @@ bool Request::parseChunkSize(void)
 {
     size_t crlf_pos = m_raw_buffer.find("\r\n");
     if (crlf_pos == std::string::npos)
+    {
+        if (m_raw_buffer.size() > 8192)
+            setError(BAD_REQUEST);
         return false;
+    }
 
     std::string size_line = m_raw_buffer.substr(0, crlf_pos);
     size_t      semi_pos  = size_line.find(';');

@@ -279,7 +279,11 @@ void Request::parseRequestLine()
 
     size_t pos = m_raw_buffer.find(CRLF);
     if (pos == std::string::npos)
+    {
+        if (m_raw_buffer.size() > 8192)
+            setError(URI_TOO_LONG);
         return;
+    }
 
     std::string request_line = m_raw_buffer.substr(0, pos);
 
@@ -323,7 +327,11 @@ void Request::parseHeaders(void)
         size_t pos = m_raw_buffer.find(CRLF, start_pos);
 
         if (pos == std::string::npos)
+		{
+			if (m_raw_buffer.size() - start_pos > 8192)
+				setError(HEADER_TOO_LARGE);
             return;
+		}
 
         std::string line = m_raw_buffer.substr(start_pos, pos - start_pos);
         start_pos        = pos + 2;
