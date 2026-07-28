@@ -48,12 +48,20 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
                                                           // and send 500 error to the client
     }
 
-    buildEnv(req, cgiMeta);
     buildArgv(cgiMeta);
+    buildEnv(req, cgiMeta);
 
     m_start_time = time(NULL);
 
     m_pid = fork();
+
+    std::string working_directory;
+    size_t      slash_pos = cgiMeta.script_path.find_last_of('/');
+    if (slash_pos != std::string::npos)
+    {
+        working_directory = cgiMeta.script_path.substr(0, slash_pos);
+    }
+
     if (m_pid < 0)
     {
         abort("Failed to fork for CGI execution"); // Throw execption so that we can handle it in the connection and
@@ -84,15 +92,10 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
         close(m_pipe_out[1]);
         close(m_pipe_out[0]);
 
-        size_t slash_pos = cgiMeta.script_path.find_last_of('/');
-        if (slash_pos != std::string::npos)
+        if (!working_directory.empty() && chdir(working_directory.c_str()) == -1)
         {
-            std::string cgi_dir = cgiMeta.script_path.substr(0, slash_pos);
-            if (chdir(cgi_dir.c_str()) == -1)
-            {
-                LOG_ERROR("CGI") << "Failed to chdir to " << cgi_dir << "\n";
-                std::exit(127);
-            }
+            LOG_ERROR("CGI") << "Failed to chdir to " << working_directory << "\n";
+            std::exit(127);
         }
 
         std::string exec_path = cgiMeta.interpreter_path.empty() ? cgiMeta.script_path : cgiMeta.interpreter_path;
@@ -117,7 +120,7 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
             abort("Failed to set close-on-exec flag for CGI output pipe"); // Throw execption so that we can handle it
                                                                            // in the connection and send 500 error to
                                                                            // the client
-        LOG_INFO("CGI") << "EXECUTE=" << cgiMeta.script_path << " Interpreter=" << cgiMeta.interpreter_path << "\n";
+        LOG_INFO("CGI") << "EXECUTE=\"" << m_argv[0] << " " << m_argv[1] << "\" CWD=" << working_directory << "\n";
     }
 }
 
@@ -137,6 +140,10 @@ void CGI::buildEnv(const Request &req, const CgiMetaData &cgiMeta)
     env_vars["QUERY_STRING"]      = req.getQuery();
     env_vars["SERVER_PROTOCOL"]   = req.getVersion();
     env_vars["SCRIPT_NAME"]       = req.getPath();
+
+    // For php-cgi
+    env_vars["REDIRECT_STATUS"] = "200";
+    env_vars["SCRIPT_FILENAME"] = m_argv[1];
 
     if (!cgiMeta.path_info.empty())
     {
@@ -194,7 +201,16 @@ void CGI::buildArgv(const CgiMetaData &cgiMeta)
     if (!cgiMeta.interpreter_path.empty())
         m_argv.push_back(strdup(cgiMeta.interpreter_path.c_str()));
 
-    m_argv.push_back(strdup(cgiMeta.script_path.c_str()));
+    std::string script_name = cgiMeta.script_path;
+    size_t      slash_pos   = cgiMeta.script_path.find_last_of('/');
+
+    if (slash_pos != std::string::npos)
+    {
+        script_name = cgiMeta.script_path.substr(slash_pos + 1, cgiMeta.script_path.size());
+        std::cout << "script_name=" << script_name << "\n";
+    }
+
+    m_argv.push_back(strdup(script_name.c_str()));
     m_argv.push_back(NULL);
 }
 
@@ -204,7 +220,7 @@ void CGI::buildArgv(const CgiMetaData &cgiMeta)
 void CGI::waitAndClean()
 {
     int status;
-    reapIfExited(status);
+    reapZombie(status);
 
     if (m_pipe_out[0] != -1)
     {
@@ -265,23 +281,23 @@ bool CGI::exitedWithFailure(int status)
 /**
  * Capture the cgi status code to check if it failed
  */
-bool CGI::reapIfExited(int &status)
+void CGI::reapZombie(int &status)
 {
     if (m_pid <= 0)
     {
-        return false;
+        return;
     }
-
-    kill(m_pid, SIGTERM);
 
     pid_t result = waitpid(m_pid, &status, WNOHANG);
-    if (result != m_pid)
+    if (result == m_pid)
     {
-        return false;
+        m_pid = -1;
+        return;
     }
 
-    m_pid = -1;
-    return true;
+    kill(m_pid, SIGKILL);
+    result = waitpid(m_pid, &status, 0);
+    m_pid  = -1;
 }
 
 /**
