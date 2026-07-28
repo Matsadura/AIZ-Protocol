@@ -207,16 +207,16 @@ RouterResult Router::handle_post()
     return RouterResult(200, disk_path, RouterResult::FILE_PATH);
 }
 
-CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
+CgiMetaData Router::get_cgi_metadata()
 {
-    const s_Location *location = RouterResource::get_best_matched_location(server, req.getPath());
-
-    if (!location || location->CGIhandlers.empty() || location->root.empty())
+    if (m_resource.has_early_response())
     {
         return CgiMetaData();
     }
 
-    std::string disk_path = RouterResource::join_path(location->root, req.getPath().substr(location->path.size()));
+    const s_Location *location = m_resource.get_location();
+
+    std::string disk_path = m_resource.get_disk_path();
     std::string script_path;
     std::string path_info;
 
@@ -227,13 +227,6 @@ CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
             std::string current_path = disk_path.substr(0, i);
             if (!is_file_regular(current_path))
             {
-                continue;
-            }
-
-            // TODO: Not save! location->root will be counted going above root will happen anyway
-            if (!RouterResource::path_traverse_is_safe(current_path))
-            {
-                LOG_DEBUG("ROUTER") << "PATH=" << current_path << " => escapes root, rejected!\n";
                 continue;
             }
 
@@ -261,7 +254,7 @@ CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
 
         if (it != location->CGIhandlers.end())
         {
-            LOG_DEBUG("ROUTER") << "[URI=" << req.getPath() << "]" << " [config_loc=" << location->path
+            LOG_DEBUG("ROUTER") << "[URI=" << m_resource.get_req_path() << "]" << " [config_loc=" << location->path
                                 << "] Recognized as CGI: $(" << it->second << " " << script_path << ")\n";
             return CgiMetaData(true, script_path, path_info, it->second);
         }

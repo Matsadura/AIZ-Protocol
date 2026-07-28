@@ -10,6 +10,24 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+struct CgiMetaData
+{
+    bool        is_cgi;
+    std::string script_path; // file system path of the script
+    std::string path_info;   // remainig charachters after the script path /cgi-bin/run.py/testing/hello
+                             // /testing/hello is the path_info
+    std::string interpreter_path;
+
+    CgiMetaData() : is_cgi(false)
+    {
+    }
+
+    CgiMetaData(bool is_cgi_val, const std::string &script, const std::string &info, const std::string &interpreter) :
+        is_cgi(is_cgi_val), script_path(script), path_info(info), interpreter_path(interpreter)
+    {
+    }
+};
+
 /**
  * Returns HTML listing of the @dir_path, the @uri_path is the resource uri requested by the user
  */
@@ -26,6 +44,7 @@ class Router
   public:
     Router(const s_Server &server, const std::string &uri, const std::string &method);
     RouterResult get_result();
+    CgiMetaData  get_cgi_metadata();
 
     /**
      * Get RouterResult of an error page, this can be feed directly to the response generator
@@ -47,22 +66,4 @@ class Router
     RouterResult handle_post();
 };
 
-struct CgiMetaData
-{
-    bool        is_cgi;
-    std::string script_path; // file system path of the script
-    std::string path_info;   // remainig charachters after the script path /cgi-bin/run.py/testing/hello
-                             // /testing/hello is the path_info
-    std::string interpreter_path;
-
-    CgiMetaData() : is_cgi(false)
-    {
-    }
-
-    CgiMetaData(bool is_cgi_val, const std::string &script, const std::string &info, const std::string &interpreter) :
-        is_cgi(is_cgi_val), script_path(script), path_info(info), interpreter_path(interpreter)
-    {
-    }
-};
-
-CgiMetaData is_cgi_request(const s_Server &server, const Request &req);
+// CgiMetaData is_cgi_request(const s_Server &server, const Request &req);

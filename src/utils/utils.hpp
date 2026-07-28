@@ -19,6 +19,11 @@ bool                     isNumeric(const std::string &str);
 bool is_file_regular(const std::string &path);
 
 /**
+ * Return: true if path if a directory
+ */
+bool is_directory_path(const std::string &path);
+
+/**
  * Return: true if @filepath is can be read
  */
 bool is_file_readable(const std::string &filepath);

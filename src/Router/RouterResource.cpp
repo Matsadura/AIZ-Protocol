@@ -64,12 +64,19 @@ RouterResource::RouterResource(const s_Server &server, const std::string &uri, c
         return;
     }
 
+    if (!is_directory_path(m_location->root))
+    {
+        router_log_helper(m_uri, m_location, "", "Root directory does not exist or not a directory", 404);
+        set_early_response(404, server);
+        return;
+    }
+
     m_disk_path = m_uri;
     m_disk_path.erase(0, m_location->path.size());
 
     if (!path_traverse_is_safe(m_disk_path)) // Prevent path traversing like: ../././../..
     {
-        router_log_helper(m_uri, m_location, m_disk_path, "Attempting to go above root directory", 400);
+        router_log_helper(m_uri, m_location, m_disk_path, " => Escapes root will be rejected", 400);
         set_early_response(400, server);
         return;
     }
@@ -262,4 +269,9 @@ bool RouterResource::is_readable()
 const s_Location *RouterResource::get_location()
 {
     return m_location;
+}
+
+std::string RouterResource::get_req_path()
+{
+    return m_uri;
 }

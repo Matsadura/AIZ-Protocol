@@ -74,6 +74,7 @@ class RouterResource
     const s_Location *get_location();
     RouterResult      get_early_router_result();
     std::string       get_disk_path();
+    std::string       get_req_path();
 
     bool has_early_response();
     bool exists();

@@ -126,6 +126,13 @@ bool is_file_regular(const std::string &path)
     return stat(path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode);
 }
 
+bool is_directory_path(const std::string &path)
+{
+    struct stat file_info = {};
+
+    return stat(path.c_str(), &file_info) == 0 && S_ISDIR(file_info.st_mode);
+}
+
 bool is_file_readable(const std::string &filepath)
 {
     return access(filepath.c_str(), R_OK) == 0;

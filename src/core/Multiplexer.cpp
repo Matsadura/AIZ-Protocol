@@ -255,9 +255,9 @@ void Multiplexer::cgi_handle_out(Connections::connection_t &conn)
 
     remove_interest(conn, CGI_STDOUT);
 
-    int  status = 0;
-    bool reaped = conn.cgi.reapIfExited(status);
-    bool failed = (count < 0) || (reaped && conn.cgi.exitedWithFailure(status));
+    int status = 0;
+    conn.cgi.reapZombie(status);
+    bool failed = (count < 0) || conn.cgi.exitedWithFailure(status);
 
     if (failed)
     {
@@ -368,7 +368,8 @@ void Multiplexer::react_to_request(Connections::connection_t &conn, uint32_t &cl
     }
     else if (conn.req.isReadyForRouting())
     {
-        CgiMetaData cgi_meta = is_cgi_request(*conn.config, conn.req);
+        Router      router(*conn.config, conn.req.getPath(), conn.req.getMethod());
+        CgiMetaData cgi_meta = router.get_cgi_metadata();
 
         if (cgi_meta.is_cgi)
         {
@@ -378,7 +379,6 @@ void Multiplexer::react_to_request(Connections::connection_t &conn, uint32_t &cl
         }
         else
         {
-            Router       router(*conn.config, conn.req.getPath(), conn.req.getMethod());
             RouterResult result = router.get_result();
             conn.response       = new Response(result);
         }
