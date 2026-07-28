@@ -28,7 +28,6 @@ class Connections
         // CGI stuff
         bool        cgi_active;
         CGI         cgi;
-        uint32_t    cgi_in_events;
         uint32_t    cgi_out_events;
         CGIResponse cgi_response;
         bool        closing;

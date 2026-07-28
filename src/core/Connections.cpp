@@ -32,7 +32,6 @@ int Connections::accept_new(int fd, Multiplexer &server)
     m_list[conn.sockfd]   = conn;
     connection_t &cennRef = m_list[conn.sockfd];
 
-    cennRef.cgi_in_events  = EPOLL_NOT_REGISTERED;
     cennRef.cgi_out_events = EPOLL_NOT_REGISTERED;
     cennRef.sock_events    = EPOLL_NOT_REGISTERED;
     cennRef.closing        = false;

@@ -8,9 +8,10 @@ class RouterResult
   public:
     enum Type
     {
-        STRING_BUFFER, // @m_data is the content that will be served
-        FILE_PATH,     // @m_data can be a valid file_path or empty, if its empty means use your default
-        REDIRECTION,   // @m_data is the location for the redirection
+        STRING_BUFFER,  // @m_data is the content that will be served
+        FILE_PATH,      // @m_data can be a valid file_path or empty, if its empty means use your default
+        REDIRECTION,    // @m_data is the location for the redirection
+        FILE_PATH_POST, // @m_data is the path file to be created
     };
 
     int         m_http_code;

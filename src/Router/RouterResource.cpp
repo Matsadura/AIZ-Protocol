@@ -57,18 +57,43 @@ RouterResource::RouterResource(const s_Server &server, const std::string &uri, c
         return;
     }
 
-    if (m_location->root.empty())
-    {
-        router_log_helper(m_uri, m_location, "", "Root directory is not configured", 404);
-        set_early_response(404, server);
-        return;
-    }
+    std::string root;
 
-    if (!is_directory_path(m_location->root))
+    if (m_method == "POST")
     {
-        router_log_helper(m_uri, m_location, "", "Root directory does not exist or not a directory", 404);
-        set_early_response(404, server);
-        return;
+        if (m_location->uploadStore.empty())
+        {
+            router_log_helper(m_uri, m_location, "", "Upload store is not configured", 404);
+            set_early_response(404, server);
+            return;
+        }
+
+        if (!is_directory_path(m_location->uploadStore))
+        {
+            router_log_helper(m_uri, m_location, m_location->uploadStore,
+                              "Upload store does not exist or not a directory", 404);
+            set_early_response(404, server);
+            return;
+        }
+        root = m_location->uploadStore;
+    }
+    else
+    {
+        if (m_location->root.empty())
+        {
+            router_log_helper(m_uri, m_location, "", "Root directory is not configured", 404);
+            set_early_response(404, server);
+            return;
+        }
+
+        if (!is_directory_path(m_location->root))
+        {
+            router_log_helper(m_uri, m_location, m_location->root, "Root directory does not exist or not a directory",
+                              404);
+            set_early_response(404, server);
+            return;
+        }
+        root = m_location->root;
     }
 
     m_disk_path = m_uri;
@@ -81,7 +106,7 @@ RouterResource::RouterResource(const s_Server &server, const std::string &uri, c
         return;
     }
 
-    m_disk_path    = join_path(m_location->root, m_disk_path);
+    m_disk_path    = join_path(root, m_disk_path);
     m_exists       = (stat(m_disk_path.c_str(), &m_file_info) == 0);
     m_is_directory = m_exists && S_ISDIR(m_file_info.st_mode);
     m_readable     = access(m_disk_path.c_str(), R_OK) == 0;

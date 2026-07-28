@@ -49,10 +49,10 @@ class Router
     /**
      * Get RouterResult of an error page, this can be feed directly to the response generator
      */
-    static RouterResult init_error_result(const s_Server &server, int http_code);
+    static RouterResult init_http_result(const s_Server &server, int http_code);
 
     // helper to init RouterResult
-    RouterResult init_error_result(int http_code);
+    RouterResult init_http_result(int http_code);
     RouterResult http_not_found();
     RouterResult http_forbidden();
     RouterResult http_redirection(int http_code, const std::string &location);

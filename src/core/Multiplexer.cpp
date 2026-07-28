@@ -303,7 +303,7 @@ void Multiplexer::react_to_cgi(Connections::connection_t &conn, uint32_t &client
         remove_interest(conn, CGI_STDOUT);
 
         Router       router(*conn.config, conn.req.getPath(), conn.req.getMethod());
-        RouterResult result = router.init_error_result(conn.cgi_response.getErrorCode());
+        RouterResult result = router.init_http_result(conn.cgi_response.getErrorCode());
         conn.response       = new Response(result);
         client_events |= EPOLLOUT;
     }
@@ -363,8 +363,13 @@ void Multiplexer::react_to_request(Connections::connection_t &conn, uint32_t &cl
     if (req_error)
     {
         LOG_INFO("REQUEST") << "HTTP_Error_Code=" << conn.req.getErrorCode() << "\n";
-        RouterResult result = Router::init_error_result(*conn.config, conn.req.getErrorCode());
+        RouterResult result = Router::init_http_result(*conn.config, conn.req.getErrorCode());
         conn.response       = new Response(result);
+    }
+    else if (req_complete && conn.req.getMethod() == "POST")
+    {
+        LOG_INFO("REQUEST") << "File: \"" << COLOR_DARK_BLUE << conn.req.getBodyFilename() << RESET << "\" Created!\n";
+        conn.response = new Response(Router::init_http_result(*conn.config, 201));
     }
     else if (conn.req.isReadyForRouting())
     {
@@ -380,10 +385,21 @@ void Multiplexer::react_to_request(Connections::connection_t &conn, uint32_t &cl
         else
         {
             RouterResult result = router.get_result();
-            conn.response       = new Response(result);
+            if (result.m_data_type == RouterResult::FILE_PATH_POST)
+            {
+                conn.req.isReadyForBodyParsing(result.m_data);
+            }
+            else
+            {
+                conn.response = new Response(result);
+                conn.req.isReadyForBodyParsing();
+            }
+            conn.req.appendDataAndParse("", 0);
+            if (conn.req.isComplete())
+            {
+                react_to_request(conn, client_events);
+            }
         }
-        conn.req.isReadyForBodyParsing();
-        conn.req.appendDataAndParse("", 0);
     }
 }
 

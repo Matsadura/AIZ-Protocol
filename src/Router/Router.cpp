@@ -19,16 +19,20 @@ RouterResult Router::get_result()
     {
         return handle_delete();
     }
+    if (m_method == "POST")
+    {
+        return handle_post();
+    }
     return http_method_not_allowed();
 }
 
-RouterResult Router::init_error_result(const s_Server &server, int http_code)
+RouterResult Router::init_http_result(const s_Server &server, int http_code)
 {
     const std::string &file_path = RouterResource::get_default_page(server, http_code);
     return RouterResult(http_code, file_path, RouterResult::FILE_PATH);
 }
 
-RouterResult Router::init_error_result(int http_code)
+RouterResult Router::init_http_result(int http_code)
 {
     const std::string &file_path = RouterResource::get_default_page(m_server, http_code);
     return RouterResult(http_code, file_path, RouterResult::FILE_PATH);
@@ -41,7 +45,7 @@ RouterResult Router::http_directory_listing(const std::string &dir_path)
 
 RouterResult Router::http_no_content()
 {
-    return init_error_result(204);
+    return init_http_result(204);
 }
 
 RouterResult Router::http_redirection(int http_code, const std::string &rediretion_location)
@@ -51,22 +55,22 @@ RouterResult Router::http_redirection(int http_code, const std::string &redireti
 
 RouterResult Router::http_forbidden()
 {
-    return init_error_result(403);
+    return init_http_result(403);
 }
 
 RouterResult Router::http_not_found()
 {
-    return init_error_result(404);
+    return init_http_result(404);
 }
 
 RouterResult Router::http_method_not_allowed()
 {
-    return init_error_result(405);
+    return init_http_result(405);
 }
 
 RouterResult Router::http_conflict()
 {
-    return init_error_result(409);
+    return init_http_result(409);
 }
 
 RouterResult Router::handle_get()
@@ -204,7 +208,7 @@ RouterResult Router::handle_post()
     }
 
     router_log_helper(m_uri, loc, disk_path, "Path is writable for POST", 200);
-    return RouterResult(200, disk_path, RouterResult::FILE_PATH);
+    return RouterResult(200, disk_path, RouterResult::FILE_PATH_POST);
 }
 
 CgiMetaData Router::get_cgi_metadata()
