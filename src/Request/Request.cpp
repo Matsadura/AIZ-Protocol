@@ -87,7 +87,7 @@ Request::~Request(void)
     }
     if (m_is_generated_temp_file && !m_body_filename.empty())
     {
-        unlink(m_body_filename.c_str());
+        std::remove(m_body_filename.c_str());
     }
 }
 
@@ -327,11 +327,11 @@ void Request::parseHeaders(void)
         size_t pos = m_raw_buffer.find(CRLF, start_pos);
 
         if (pos == std::string::npos)
-		{
-			if (m_raw_buffer.size() - start_pos > 8192)
-				setError(HEADER_TOO_LARGE);
+        {
+            if (m_raw_buffer.size() - start_pos > 8192)
+                setError(HEADER_TOO_LARGE);
             return;
-		}
+        }
 
         std::string line = m_raw_buffer.substr(start_pos, pos - start_pos);
         start_pos        = pos + 2;
