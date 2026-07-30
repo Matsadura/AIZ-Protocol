@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Test Index</title>
+    
+    <!-- Import Open Props -->
+    <link rel="stylesheet" href="/styles/common.css" />
+    <link rel="stylesheet" href="/styles/index.css" />
+    
+    <style>
+    </style>
+</head>
+<body class="page">
+    <main class="index-menu">
+        <h1 class="index-menu__title">Test Methods</h1>
+        
+        <div class="index-menu__section">
+            <h2 class="index-menu__section-title">GET</h2>
+            <ul class="index-menu__list">
+                <li class="index-menu__item"><a class="index-menu__link" href="/test-dir-listing">Directory listing</a></li>
+                <li class="index-menu__item"><a class="index-menu__link" href="/test-no-root">If location has no root</a></li>
+                <li class="index-menu__item"><a class="index-menu__link" href="/test-listing-index">Directory listing + index file</a></li>
+            </ul>
+        </div>
+        
+        <div class="index-menu__section">
+            <h2 class="index-menu__section-title">POST</h2>
+            <ul class="index-menu__list">
+                <li class="index-menu__item"><a class="index-menu__link" href="/upload.html">Upload file</a></li>
+                <li class="index-menu__item"><a class="index-menu__link" href="/uploads">Directory listing of files</a></li>
+            </ul>
+        </div>
+
+        <div class="index-menu__section">
+            <h2 class="index-menu__section-title">DELETE</h2>
+            <ul class="index-menu__list">
+                <li class="index-menu__item"><a class="index-menu__link" href="/delete.html">Delete file</a></li>
+                <li class="index-menu__item"><a class="index-menu__link" href="/uploads">Directory listing of files</a></li>
+            </ul>
+        </div>
+
+        <div class="index-menu__section">
+            <h2 class="index-menu__section-title">CGI applications</h2>
+            <ul class="index-menu__list">
+                <li class="index-menu__item"><a class="index-menu__link" href="/cgi-bin/chat.php">Chat</a></li>
+                <li class="index-menu__item"><a class="index-menu__link" href="/cgi-bin/debug.php">Debug</a></li>
+            </ul>
+        </div>
+    </main>
+</body>
+</html>

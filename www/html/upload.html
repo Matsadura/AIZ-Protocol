@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>File Upload Test</title>
+
+        <link rel="stylesheet" href="/styles/common.css" />
+        <link rel="stylesheet" href="/styles/upload.css" />
+    </head>
+    <body class="page">
+        <main class="upload-widget">
+            <h2 class="upload-widget__title">Upload a File</h2>
+
+            <form class="upload-widget__form" id="uploadForm" method="POST">
+                <input class="upload-widget__input" type="file" id="fileInput" name="file" required>
+                <button class="upload-widget__button" type="submit">Upload</button>
+            </form>
+
+            <div class="response-card" id="responseContainer">
+                <div class="response-card__header">
+                    <span>Status Code</span>
+                    <span id="statusCode"></span>
+                </div>
+                <pre class="response-card__body" id="responseResult"></pre>
+            </div>
+
+            <a class="upload-widget__link" href="/uploads">Go to directory listing</a>
+        </main>
+
+        <script>
+        document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const file = document.getElementById("fileInput").files[0];
+            const url = "/uploads/" + encodeURIComponent(file.name);
+            const responseContainer = document.getElementById("responseContainer");
+            const statusCodeElem = document.getElementById("statusCode");
+            const responseResultElem = document.getElementById("responseResult");
+
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    body: file
+                });
+
+                const responseContent = await response.text();
+
+                // Set text content
+                statusCodeElem.textContent = response.status;
+                responseResultElem.textContent = responseContent;
+
+                // Handle styling based on success/error
+                responseContainer.classList.add("response-card--visible");
+                if (!response.ok) {
+                    responseContainer.classList.add("response-card--error");
+                } else {
+                    responseContainer.classList.remove("response-card--error");
+                }
+
+            } catch (error) {
+                // Handle network errors (e.g., server down)
+                statusCodeElem.textContent = "Network Error";
+                responseResultElem.textContent = error.message;
+
+                responseContainer.classList.add("response-card--visible");
+                responseContainer.classList.add("response-card--error");
+            }
+        });
+        </script>
+    </body>
+</html>

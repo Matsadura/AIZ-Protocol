@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>File Delete Test</title>
+
+        <link rel="stylesheet" href="/styles/common.css" />
+        <link rel="stylesheet" href="/styles/upload.css" />
+    </head>
+    <body class="page">
+        <main class="upload-widget">
+            <h2 class="upload-widget__title">Delete a File</h2>
+
+            <form class="upload-widget__form" id="deleteForm">
+                <input class="upload-widget__input" type="text" id="filenameInput" name="filename" placeholder="Example: file.txt" required>
+                <button class="upload-widget__button" type="submit">Delete</button>
+            </form>
+
+            <div class="response-card" id="responseContainer">
+                <div class="response-card__header">
+                    <span>Status Code</span>
+                    <span id="statusCode"></span>
+                </div>
+                <pre class="response-card__body" id="responseResult"></pre>
+            </div>
+
+            <a class="upload-widget__link" href="/uploads">Go to directory listing</a>
+        </main>
+
+        <script>
+        document.getElementById("deleteForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const filename = document.getElementById("filenameInput").value;
+            const url = "/delete/" + encodeURIComponent(filename);
+            const responseContainer = document.getElementById("responseContainer");
+            const statusCodeElem = document.getElementById("statusCode");
+            const responseResultElem = document.getElementById("responseResult");
+
+            try {
+                // DELETE requests do not require a body payload
+                const response = await fetch(url, {
+                    method: "DELETE"
+                });
+
+                const responseContent = await response.text();
+
+                // Set text content
+                statusCodeElem.textContent = response.status;
+                responseResultElem.textContent = responseContent || "Successfully deleted!";
+
+                // Handle styling based on success/error
+                responseContainer.classList.add("response-card--visible");
+                if (!response.ok) {
+                    responseContainer.classList.add("response-card--error");
+                } else {
+                    responseContainer.classList.remove("response-card--error");
+                }
+
+            } catch (error) {
+                // Handle network errors (e.g., server down)
+                statusCodeElem.textContent = "Network Error";
+                responseResultElem.textContent = error.message;
+
+                responseContainer.classList.add("response-card--visible");
+                responseContainer.classList.add("response-card--error");
+            }
+        });
+        </script>
+    </body>
+</html>

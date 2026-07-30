@@ -2,6 +2,6 @@
 
 int main()
 {
-    Multiplexer server("configfile/router.conf");
+    Multiplexer server("configfile/aiz.conf");
     server.run();
 }
