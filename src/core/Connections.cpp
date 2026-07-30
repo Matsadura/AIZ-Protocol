@@ -38,6 +38,7 @@ int Connections::accept_new(int fd, Multiplexer &server)
     cennRef.cgi_active     = false;
     cennRef.config         = server.get_config(fd);
     cennRef.response       = NULL;
+    cennRef.req_routed     = false;
     if (cennRef.config == NULL)
     {
         UNREACHABLE("get_config should never return a null value\n");

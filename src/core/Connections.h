@@ -23,6 +23,7 @@ class Connections
         s_Server               *config;
         Response               *response;
         Request                 req;
+        bool                    req_routed;
         uint32_t                sock_events;
 
         // CGI stuff

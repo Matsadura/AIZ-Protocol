@@ -122,6 +122,7 @@ class Multiplexer
     void react_to_cgi(Connections::connection_t &conn, uint32_t &client_events);
     void react_to_response(Connections::connection_t &conn, uint32_t &client_events);
     void react_to_request(Connections::connection_t &conn, uint32_t &client_events);
+    void router_request(Connections::connection_t &conn);
 };
 
 #endif

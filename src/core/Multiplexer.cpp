@@ -365,42 +365,49 @@ void Multiplexer::react_to_request(Connections::connection_t &conn, uint32_t &cl
         LOG_INFO("REQUEST") << "HTTP_Error_Code=" << conn.req.getErrorCode() << "\n";
         RouterResult result = Router::init_http_result(*conn.config, conn.req.getErrorCode());
         conn.response       = new Response(result);
+        return;
     }
-    else if (req_complete && conn.req.getMethod() == "POST")
+
+    if (!conn.req_routed && conn.req.isReadyForRouting())
+    {
+        router_request(conn);
+    }
+
+    if (conn.req.isComplete() && !conn.cgi_active && !conn.response && conn.req.getMethod() == "POST")
     {
         LOG_INFO("REQUEST") << "File: \"" << COLOR_DARK_BLUE << conn.req.getBodyFilename() << RESET << "\" Created!\n";
         conn.response = new Response(Router::init_http_result(*conn.config, 201));
     }
-    else if (conn.req.isReadyForRouting())
-    {
-        Router      router(*conn.config, conn.req.getPath(), conn.req.getMethod());
-        CgiMetaData cgi_meta = router.get_cgi_metadata();
+}
 
-        if (cgi_meta.is_cgi)
+void Multiplexer::router_request(Connections::connection_t &conn)
+{
+    conn.req_routed = true;
+
+    Router      router(*conn.config, conn.req.getPath(), conn.req.getMethod());
+    CgiMetaData cgi_meta = router.get_cgi_metadata();
+
+    if (cgi_meta.is_cgi)
+    {
+        conn.req.isReadyForBodyParsing();
+        conn.cgi_active = true;
+        conn.cgi.execute(conn.req, cgi_meta);
+        add_interest(conn, CGI_STDOUT, EPOLLIN);
+    }
+    else
+    {
+        RouterResult result = router.get_result();
+        if (result.m_data_type == RouterResult::FILE_PATH_POST)
         {
-            conn.cgi.execute(conn.req, cgi_meta);
-            conn.cgi_active = true;
-            add_interest(conn, CGI_STDOUT, EPOLLIN);
+            conn.req.isReadyForBodyParsing(result.m_data);
         }
         else
         {
-            RouterResult result = router.get_result();
-            if (result.m_data_type == RouterResult::FILE_PATH_POST)
-            {
-                conn.req.isReadyForBodyParsing(result.m_data);
-            }
-            else
-            {
-                conn.response = new Response(result);
-                conn.req.isReadyForBodyParsing();
-            }
-            conn.req.appendDataAndParse("", 0);
-            if (conn.req.isComplete())
-            {
-                react_to_request(conn, client_events);
-            }
+            conn.req.isReadyForBodyParsing();
+            conn.response = new Response(result);
         }
     }
+    conn.req.appendDataAndParse("", 0); // Let the request start parsing if it has something in req buffer
 }
 
 /**

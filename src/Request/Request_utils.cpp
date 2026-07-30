@@ -52,18 +52,21 @@ bool Request::isReadyForBodyParsing(const std::string &filename)
 {
     if (m_state != COMPLETE)
     {
-        m_state         = BODY;
-        m_body_filename = filename;
-        m_body_fd       = open(m_body_filename.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
-        if (m_body_fd == -1)
-        {
-            setError(500);
-            return false;
-        }
-        m_is_generated_temp_file = false;
-        return true;
+        m_state = BODY;
     }
-    return false;
+    if (m_body_fd != -1)
+    {
+        close(m_body_fd);
+    }
+    m_body_filename = filename;
+    m_body_fd       = open(m_body_filename.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    if (m_body_fd == -1)
+    {
+        setError(500);
+        return false;
+    }
+    m_is_generated_temp_file = false;
+    return true;
 }
 
 /**

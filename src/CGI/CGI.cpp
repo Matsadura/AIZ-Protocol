@@ -74,7 +74,10 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
 
         int fd_in = -1;
         if (!body_file.empty())
+        {
+            LOG_INFO("CGI") << "Will read request body from: \"" << body_file << "\"\n";
             fd_in = open(body_file.c_str(), O_RDONLY);
+        }
 
         if (fd_in == -1)
             fd_in = open("/dev/null", O_RDONLY);
@@ -207,7 +210,6 @@ void CGI::buildArgv(const CgiMetaData &cgiMeta)
     if (slash_pos != std::string::npos)
     {
         script_name = cgiMeta.script_path.substr(slash_pos + 1, cgiMeta.script_path.size());
-        std::cout << "script_name=" << script_name << "\n";
     }
 
     m_argv.push_back(strdup(script_name.c_str()));
