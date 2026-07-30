@@ -175,7 +175,7 @@ RouterResult Router::handle_delete()
 RouterResult Router::handle_post()
 {
 
-    if (m_resource.validate_upload_store_path())
+    if (!m_resource.validate_upload_store_path())
     {
         return http_not_found();
     }

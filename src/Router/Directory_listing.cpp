@@ -1,11 +1,34 @@
 #include "Router.hpp"
 #include "RouterResource.hpp"
+#include <iomanip>
 
 bool comp_name(const std::pair<bool, std::string> &a, const std::pair<bool, std::string> &b)
 {
     if (a.first != b.first)
         return a.first > b.first; // dir always comes first!
     return a.second < b.second;
+}
+
+std::string url_encode(const std::string &value)
+{
+    std::ostringstream escaped;
+    escaped.fill('0');
+    escaped << std::hex << std::uppercase;
+
+    for (size_t i = 0; i < value.length(); ++i)
+    {
+        unsigned char c = value[i];
+
+        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+        {
+            escaped << c;
+        }
+        else
+        {
+            escaped << '%' << std::setw(2) << int(c);
+        }
+    }
+    return escaped.str();
 }
 
 std::string html_escape_special_chars(const std::string &in)
@@ -79,7 +102,8 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
         std::string        suffix = is_dir ? "/" : "";
 
         // TODO: Use URL encoding to encode the name inside the htef attr
-        output << "<a href=\"" << name << suffix << "\">" << html_escape_special_chars(name) << suffix << "</a>\n";
+        output << "<a href=\"" << url_encode(name) << suffix << "\">" << html_escape_special_chars(name) << suffix
+               << "</a>\n";
     }
 
     output << "</pre><hr></body></html>\n";
