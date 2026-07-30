@@ -101,6 +101,7 @@ std::string CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi
 {
     std::ostringstream http_headers;
     std::string        status = "200 OK";
+    std::string        location_line;
 
     if (cgi_headers.count("status"))
         status = cgi_headers["status"];
@@ -112,11 +113,12 @@ std::string CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi
         else
         {
             status = "302 Found";
-            http_headers << "Location: " << loc << "\r\n";
+            location_line += "Location: " + loc + "\r\n";
         }
     }
 
     http_headers << "HTTP/1.1 " << status << "\r\n";
+    http_headers << location_line;
 
     if (cgi_headers.count("content-type"))
         http_headers << "Content-Type: " << cgi_headers["content-type"] << "\r\n";
