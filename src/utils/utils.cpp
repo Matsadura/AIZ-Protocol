@@ -119,6 +119,13 @@ bool string_starts_with(const std::string &bigger_string, const std::string &pre
     return std::equal(prefix.begin(), prefix.end(), bigger_string.begin());
 }
 
+bool is_file_or_directory_exists(const std::string &path)
+{
+    struct stat file_info = {};
+
+    return stat(path.c_str(), &file_info) == 0;
+}
+
 bool is_file_regular(const std::string &path)
 {
     struct stat file_info = {};

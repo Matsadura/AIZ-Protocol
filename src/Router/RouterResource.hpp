@@ -14,11 +14,7 @@ class RouterResource
     const s_Location *m_location;
     std::string       m_uri;
     std::string       m_method;
-    std::string       m_disk_path;
-    struct stat       m_file_info;
-    bool              m_exists;
-    bool              m_is_directory;
-    bool              m_readable;
+    std::string       m_subpath; // The part after the path {} configured in config file
 
     RouterResult m_router_result;
     bool         m_has_early_response;
@@ -73,13 +69,32 @@ class RouterResource
 
     const s_Location *get_location();
     RouterResult      get_early_router_result();
-    std::string       get_disk_path();
-    std::string       get_req_path();
+    // std::string       get_disk_path();
+    std::string get_req_path();
 
     bool has_early_response();
-    bool exists();
-    bool is_directory();
-    bool is_readable();
+
+    /**
+     * Return: the subpath remaining after chopping the matched location prefix
+     *
+     * For example:
+     *   Configured location -> "/get"
+     *   Request URI         -> "/get/hello/world"
+     *   Returned path       -> "/hello/world"
+     */
+    std::string get_subpath();
+
+    /**
+     * Validates the configured root directory path
+     * Return: true if its a directory
+     */
+    bool validate_root_path();
+
+    /**
+     * Validates the configured upload storage directory path
+     * Return: true if its a directory
+     */
+    bool validate_upload_store_path();
 };
 
 /**

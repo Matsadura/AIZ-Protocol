@@ -65,5 +65,3 @@ class Router
     RouterResult handle_delete();
     RouterResult handle_post();
 };
-
-// CgiMetaData is_cgi_request(const s_Server &server, const Request &req);

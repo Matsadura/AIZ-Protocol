@@ -20,10 +20,6 @@ RouterResource::RouterResource(const s_Server &server, const std::string &uri, c
     m_location(NULL),
     m_uri(uri),
     m_method(method),
-    m_file_info(),
-    m_exists(false),
-    m_is_directory(false),
-    m_readable(false),
     m_router_result(404, get_default_page(server, 404), RouterResult::FILE_PATH),
     m_has_early_response(false)
 {
@@ -57,59 +53,14 @@ RouterResource::RouterResource(const s_Server &server, const std::string &uri, c
         return;
     }
 
-    std::string root;
-
-    if (m_method == "POST")
+    m_subpath = m_uri;
+    m_subpath.erase(0, m_location->path.size());
+    if (!path_traverse_is_safe(m_subpath)) // Prevent path traversing like: ../././../..
     {
-        if (m_location->uploadStore.empty())
-        {
-            router_log_helper(m_uri, m_location, "", "Upload store is not configured", 404);
-            set_early_response(404, server);
-            return;
-        }
-
-        if (!is_directory_path(m_location->uploadStore))
-        {
-            router_log_helper(m_uri, m_location, m_location->uploadStore,
-                              "Upload store does not exist or not a directory", 404);
-            set_early_response(404, server);
-            return;
-        }
-        root = m_location->uploadStore;
-    }
-    else
-    {
-        if (m_location->root.empty())
-        {
-            router_log_helper(m_uri, m_location, "", "Root directory is not configured", 404);
-            set_early_response(404, server);
-            return;
-        }
-
-        if (!is_directory_path(m_location->root))
-        {
-            router_log_helper(m_uri, m_location, m_location->root, "Root directory does not exist or not a directory",
-                              404);
-            set_early_response(404, server);
-            return;
-        }
-        root = m_location->root;
-    }
-
-    m_disk_path = m_uri;
-    m_disk_path.erase(0, m_location->path.size());
-
-    if (!path_traverse_is_safe(m_disk_path)) // Prevent path traversing like: ../././../..
-    {
-        router_log_helper(m_uri, m_location, m_disk_path, " => Escapes root will be rejected", 400);
+        router_log_helper(m_uri, m_location, m_subpath, "Attempting to escapee root", 400);
         set_early_response(400, server);
         return;
     }
-
-    m_disk_path    = join_path(root, m_disk_path);
-    m_exists       = (stat(m_disk_path.c_str(), &m_file_info) == 0);
-    m_is_directory = m_exists && S_ISDIR(m_file_info.st_mode);
-    m_readable     = access(m_disk_path.c_str(), R_OK) == 0;
 }
 
 const s_Location *RouterResource::get_best_matched_location(const s_Server &server, const std::string &resource)
@@ -271,26 +222,6 @@ RouterResult RouterResource::get_early_router_result()
     return m_router_result;
 }
 
-std::string RouterResource::get_disk_path()
-{
-    return m_disk_path;
-}
-
-bool RouterResource::exists()
-{
-    return m_exists;
-}
-
-bool RouterResource::is_directory()
-{
-    return m_is_directory;
-}
-
-bool RouterResource::is_readable()
-{
-    return m_readable;
-}
-
 const s_Location *RouterResource::get_location()
 {
     return m_location;
@@ -299,4 +230,42 @@ const s_Location *RouterResource::get_location()
 std::string RouterResource::get_req_path()
 {
     return m_uri;
+}
+
+std::string RouterResource::get_subpath()
+{
+    return m_subpath;
+}
+
+bool RouterResource::validate_root_path()
+{
+    if (m_location->root.empty())
+    {
+        router_log_helper(m_uri, m_location, "", "Root directory is not configured", 404);
+        return false;
+    }
+
+    if (!is_directory_path(m_location->root))
+    {
+        router_log_helper(m_uri, m_location, m_location->root, "Root directory does not exist or not a directory", 404);
+        return false;
+    }
+    return true;
+}
+
+bool RouterResource::validate_upload_store_path()
+{
+    if (m_location->uploadStore.empty())
+    {
+        router_log_helper(m_uri, m_location, "", "Upload store is not configured", 404);
+        return false;
+    }
+
+    if (!is_directory_path(m_location->uploadStore))
+    {
+        router_log_helper(m_uri, m_location, m_location->uploadStore, "Upload store does not exist or not a directory",
+                          404);
+        return false;
+    }
+    return true;
 }

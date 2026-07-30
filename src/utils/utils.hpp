@@ -34,6 +34,11 @@ bool is_file_readable(const std::string &filepath);
 bool is_file_executable(const std::string &filepath);
 
 /**
+ * Return: true if @filepath exists
+ */
+bool is_file_or_directory_exists(const std::string &path);
+
+/**
  * Returns a Boolean stating whether a string starts with the specified prefix
  */
 bool string_starts_with(const std::string &bigger_string, const std::string &prefix);
