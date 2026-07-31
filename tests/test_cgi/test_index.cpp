@@ -2,6 +2,13 @@
 
 int main()
 {
-    Multiplexer server("configfile/aiz.conf");
-    server.run();
+    try
+    {
+        Multiplexer server("configfile/aiz.conf");
+        server.run();
+    }
+    catch (std::exception &e)
+    {
+        std::cout << e.what();
+    }
 }

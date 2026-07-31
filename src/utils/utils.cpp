@@ -1,5 +1,6 @@
 #include "utils.hpp"
 #include <iostream>
+#include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
@@ -179,4 +180,12 @@ bool isValidHeaderValue(const std::string &value)
     if (value.size() > 8192)
         return false;
     return true;
+}
+
+std::string int_to_string(int n)
+{
+    std::stringstream ss;
+
+    ss << n;
+    return ss.str();
 }

@@ -47,4 +47,9 @@ bool isTokenChar(char c);
 bool isValidHeaderValue(const std::string &value);
 bool isValidHeaderName(const std::string &key);
 
+/**
+ * Convert integer to std::string
+ */
+std::string int_to_string(int n);
+
 #endif /* UTILS_HPP */

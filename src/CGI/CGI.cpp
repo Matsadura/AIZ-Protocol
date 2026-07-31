@@ -1,5 +1,6 @@
 #include "CGI.hpp"
 #include <cstddef>
+#include <stdexcept>
 
 CGI::CGI() : m_pipe_out(), m_pid(-1), m_start_time(0)
 {
@@ -44,8 +45,7 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
 {
     if (pipe(m_pipe_out) == -1)
     {
-        abort("Failed to create pipe for CGI execution"); // Throw execption so that we can handle it in the connection
-                                                          // and send 500 error to the client
+        throw std::runtime_error("Failed to create pipe for CGI execution");
     }
 
     buildArgv(cgiMeta);
@@ -64,8 +64,7 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
 
     if (m_pid < 0)
     {
-        abort("Failed to fork for CGI execution"); // Throw execption so that we can handle it in the connection and
-                                                   // send 500 error to the client
+        throw std::runtime_error("Failed to fork for CGI execution");
     }
     else if (m_pid == 0)
     {
@@ -113,16 +112,11 @@ void CGI::execute(const Request &req, const CgiMetaData &cgiMeta)
 
         int out_flags = fcntl(m_pipe_out[0], F_GETFL, 0);
         if (out_flags == -1)
-            abort("Failed to get flags for CGI output pipe"); // Throw execption so that we can handle it in the
-                                                              // connection and send 500 error to the client
+            throw std::runtime_error("Failed to get flags for CGI output pipe");
         if (fcntl(m_pipe_out[0], F_SETFL, out_flags | O_NONBLOCK) == -1)
-            abort("Failed to set non-blocking flag for CGI output pipe"); // Throw execption so that we can handle it in
-                                                                          // the connection and send 500 error to the
-                                                                          // client
+            throw std::runtime_error("Failed to set non-blocking flag for CGI output pipe");
         if (fcntl(m_pipe_out[0], F_SETFD, FD_CLOEXEC) == -1)
-            abort("Failed to set close-on-exec flag for CGI output pipe"); // Throw execption so that we can handle it
-                                                                           // in the connection and send 500 error to
-                                                                           // the client
+            throw std::runtime_error("Failed to set close-on-exec flag for CGI output pipe");
         LOG_INFO("CGI") << "EXECUTE=\"" << m_argv[0] << " " << m_argv[1] << "\" CWD=" << working_directory << "\n";
     }
 }

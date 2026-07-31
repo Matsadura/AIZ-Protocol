@@ -20,31 +20,32 @@ Connections &Connections::operator=(const Connections &other) // NOLINT
 /**
  * Accept a fresh client connection and register it for monitoring
  */
-int Connections::accept_new(int fd, Multiplexer &server)
+int Connections::accept_new(int listener_fd, Multiplexer &server)
 {
-    connection_t conn;
-    socklen_t    size = sizeof conn.addr;
-    conn.sockfd       = accept(fd, reinterpret_cast<struct sockaddr *>(&conn.addr), &size);
-    if (conn.sockfd == -1)
-        abort("accept");
-    LOG_INFO("CONNECTIONS") << "New connection accepted (fd=" << conn.sockfd << ") from "
-                            << addr_to_string(reinterpret_cast<struct sockaddr_in *>(&conn.addr)) << "\n";
-    m_list[conn.sockfd]   = conn;
-    connection_t &cennRef = m_list[conn.sockfd];
-
-    cennRef.cgi_out_events = EPOLL_NOT_REGISTERED;
-    cennRef.sock_events    = EPOLL_NOT_REGISTERED;
-    cennRef.closing        = false;
-    cennRef.cgi_active     = false;
-    cennRef.config         = server.get_config(fd);
-    cennRef.response       = NULL;
-    cennRef.req_routed     = false;
-    if (cennRef.config == NULL)
+    s_Server *listener_config = server.get_config(listener_fd);
+    if (!listener_config)
     {
-        UNREACHABLE("get_config should never return a null value\n");
+        throw std::runtime_error("Couldn't find the server conifg associated with the listener");
     }
-    server.add_interest(cennRef, Multiplexer::CLIENT, EPOLLIN);
-    return conn.sockfd;
+
+    struct sockaddr_storage addr          = {};
+    socklen_t               addr_len      = sizeof(addr);
+    int                     connection_fd = accept(listener_fd, reinterpret_cast<struct sockaddr *>(&addr), &addr_len);
+
+    if (connection_fd == -1)
+    {
+        int err = errno;
+        throw std::runtime_error(
+            "Failed to accept new incoming client accept() failed: " + std::string(std::strerror(err)) + ")");
+    }
+
+    m_list[connection_fd] = connection_t(connection_fd, addr, listener_config);
+
+    server.add_interest(m_list[connection_fd], Multiplexer::CLIENT, EPOLLIN);
+    LOG_INFO("CONNECTIONS") << "New connection accepted (fd=" << connection_fd << ") from "
+                            << addr_to_string(reinterpret_cast<struct sockaddr_in *>(&addr)) << "\n";
+
+    return connection_fd;
 }
 
 /**
@@ -54,12 +55,14 @@ void Connections::close_connection(int sockfd, Multiplexer &server)
 {
     connection_t *conn = find(sockfd);
     if (conn == NULL)
+    {
         return;
+    }
 
     if (conn->cgi_active)
     {
         server.remove_interest(*conn, Multiplexer::CGI_STDOUT);
-        conn->cgi.waitAndClean(); // TODO: Mybe Kill the process?
+        conn->cgi.waitAndClean();
     }
 
     LOG_INFO("CONNECTIONS") << "Close (fd=" << sockfd << ") connection\n";
@@ -84,7 +87,9 @@ Connections::~Connections()
     std::map<int, connection_t>::iterator it = m_list.begin();
     while (it != m_list.end())
     {
+        it->second.cgi.waitAndClean();
         close(it->second.sockfd);
+        delete it->second.response;
         it++;
     }
 }

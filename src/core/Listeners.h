@@ -32,7 +32,8 @@ class Listeners
     Listeners();
     ~Listeners();
 
-    int         create_new(const s_Server &server);
+    int         create_new(const std::string &node, const std::string &service, const s_Server &server);
+    void        remove(int socket_fd);
     bool        contains(int fd);
     s_Server   *get_listener_config(int fd);
     std::size_t size();

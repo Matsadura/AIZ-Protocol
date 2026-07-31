@@ -6,6 +6,7 @@
 #include "../CGI/CGIResponse.hpp"
 #include "../Response/Response.hpp"
 #include "../config_file_parser/parser/configfile.hpp"
+#include "../config_file_parser/parser/directive.hpp"
 #include "Common.h"
 
 class ListenerSocket;
@@ -32,6 +33,32 @@ class Connections
         uint32_t    cgi_out_events;
         CGIResponse cgi_response;
         bool        closing;
+
+        connection_t() :
+            addr(),
+            sockfd(),
+            config(),
+            response(),
+            req_routed(),
+            sock_events(),
+            cgi_active(),
+            cgi_out_events(),
+            closing()
+        {
+        }
+
+        connection_t(int conection_fd, const struct sockaddr_storage &client_addr, s_Server *server_config) :
+            addr(client_addr),
+            sockfd(conection_fd),
+            config(server_config),
+            response(NULL),
+            req_routed(false),
+            sock_events(EPOLL_NOT_REGISTERED),
+            cgi_active(false),
+            cgi_out_events(EPOLL_NOT_REGISTERED),
+            closing(false)
+        {
+        }
     };
 
   private:

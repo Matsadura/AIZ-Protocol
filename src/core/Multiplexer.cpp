@@ -1,4 +1,5 @@
 #include "Multiplexer.h"
+#include "Common.h"
 
 Multiplexer::Multiplexer(const char *config_file) : m_epfd(-1), m_evlist(), m_config(config_file)
 {
@@ -6,23 +7,53 @@ Multiplexer::Multiplexer(const char *config_file) : m_epfd(-1), m_evlist(), m_co
     m_epfd                = epoll_create(10000);
     if (m_epfd == -1)
     {
-        abort("epoll_create");
+        int                err = errno;
+        std::ostringstream message;
+        message << "Failed to start the multiplexing system.\n";
+        message << "    Cause: epoll_create() failed (" << std::strerror(err) << ").";
+        throw std::runtime_error(message.str());
     }
+
+    bool valid_server_found = false;
 
     std::vector<s_Server> servers = m_config.getConfig();
     for (std::size_t i = 0; i < servers.size(); i++)
     {
-        int listen_sock = m_listeners.create_new(servers[i]);
-        ev.events       = EPOLLIN;
-        ev.data.u64     = pack_data(listen_sock, LISTENER);
-        if (epoll_ctl(m_epfd, EPOLL_CTL_ADD, listen_sock, &ev) == -1)
+        for (std::map<std::string, std::vector<int> >::iterator node_it = servers[i].ports.begin();
+             node_it != servers[i].ports.end(); node_it++)
         {
-            abort("epoll_ctl");
+            const std::string &node = node_it->first;
+
+            for (std::size_t service_index = 0; service_index < node_it->second.size(); service_index++)
+            {
+                const std::string &service = int_to_string(node_it->second[service_index]);
+
+                try
+                {
+                    int listen_sock = m_listeners.create_new(node, service, servers[i]);
+                    ev.events       = EPOLLIN;
+                    ev.data.u64     = pack_data(listen_sock, LISTENER);
+                    if (epoll_ctl(m_epfd, EPOLL_CTL_ADD, listen_sock, &ev) == -1)
+                    {
+                        int                err = errno;
+                        std::ostringstream message;
+                        message << "Failed to monitor '" << node << ":" << service << "' in the multiplexer.\n";
+                        message << "    Cause: epoll_ctl() failed (" << std::strerror(err) << ").";
+                        m_listeners.remove(listen_sock);
+                        throw std::runtime_error(message.str());
+                    }
+                    valid_server_found = true;
+                }
+                catch (std::runtime_error &e)
+                {
+                    LOG_ERROR("MULTIPLEXER") << e.what() << "\n";
+                }
+            }
         }
     }
 
     /**
-     * TODO: SIGPIPE should be ignored! if the CGI scripts closes its reading side and we tried to write to the pipe
+     * SIGPIPE should be ignored! if the CGI scripts closes its reading side and we tried to write to the pipe
      * signal will kill our process
      *
      * More details:
@@ -30,6 +61,11 @@ Multiplexer::Multiplexer(const char *config_file) : m_epfd(-1), m_evlist(), m_co
      * SIGPIPE signal to the writing process. By default, this signal kills a process
      */
     signal(SIGPIPE, SIG_IGN);
+
+    if (!valid_server_found)
+    {
+        throw std::runtime_error("No valid server found in configuration");
+    }
 }
 
 Multiplexer::~Multiplexer()
@@ -73,17 +109,21 @@ void Multiplexer::run()
 
             if (role == LISTENER)
             {
-                m_conns.accept_new(fd, *this);
+                try
+                {
+                    m_conns.accept_new(fd, *this);
+                }
+                catch (std::exception &e)
+                {
+                    LOG_ERROR("MULTIPLEXER") << e.what() << "\n";
+                }
                 continue;
             }
 
             Connections::connection_t *connPtr = m_conns.find(fd);
             if (connPtr == NULL)
             {
-                // BUG: The fd is supposed to be the one used to locate the connection, not necessarily the one in which
-                // the event occurred, if role is client that's OK!
                 epoll_ctl(m_epfd, EPOLL_CTL_DEL, fd, NULL);
-
                 continue;
             }
 
@@ -150,7 +190,10 @@ void Multiplexer::epoll_apply(Connections::connection_t &conn, int op, FDRole ro
 
     if (epoll_ctl(m_epfd, op, fd, &ev) == -1)
     {
-        abort("epoll_ctl");
+        int err_code = errno;
+        LOG_ERROR("MULTIPLEXER") << "Last update event failed.\n    Cause: epoll_ctl() failed ("
+                                 << std::strerror(err_code) << ").\n";
+        conn.closing = true;
     }
 }
 
@@ -389,10 +432,19 @@ void Multiplexer::router_request(Connections::connection_t &conn)
 
     if (cgi_meta.is_cgi)
     {
-        conn.req.isReadyForBodyParsing();
-        conn.cgi_active = true;
-        conn.cgi.execute(conn.req, cgi_meta);
-        add_interest(conn, CGI_STDOUT, EPOLLIN);
+        try
+        {
+            conn.req.isReadyForBodyParsing();
+            conn.cgi.execute(conn.req, cgi_meta);
+            conn.cgi_active = true;
+            add_interest(conn, CGI_STDOUT, EPOLLIN);
+        }
+        catch (std::runtime_error &e)
+        {
+            conn.cgi.waitAndClean();
+            LOG_ERROR("CGI") << "[URI=" << conn.req.getURI() << "] " << e.what() << "\n";
+            conn.response = new Response(Router::init_http_result(*conn.config, 500));
+        }
     }
     else
     {
