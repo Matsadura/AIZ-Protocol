@@ -11,7 +11,7 @@
 #include <cstddef>
 #include <sys/epoll.h>
 
-#define MAX_EVENTS 100000
+#define MAX_EVENTS 10000
 #define BUFF_SIZE 65536
 
 #define __ANSI_SEQ(n) "\033[" #n "m"

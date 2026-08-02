@@ -245,15 +245,22 @@ bool CGI::isRunning() const
         return false;
 }
 
-bool CGI::isTimeout(time_t start_time, int timeout) const
+/**
+ * True if more than @seconds have passed since the last updateStartTime() call
+ */
+bool CGI::isTimeout(time_t current_time, int seconds) const
 {
-    time_t current_time = time(NULL);
-    return (current_time - start_time) > timeout;
+    return (current_time - m_start_time) > seconds;
 }
 
 time_t CGI::getStartTime() const
 {
     return m_start_time;
+}
+
+void CGI::updateStartTime()
+{
+    m_start_time = time(NULL);
 }
 
 /**
@@ -292,6 +299,7 @@ void CGI::reapZombie(int &status)
     }
 
     kill(m_pid, SIGKILL);
+    LOG_INFO("CGI") << "Process with PID=" << m_pid << " has been killed\n";
     result = waitpid(m_pid, &status, 0);
     m_pid  = -1;
 }

@@ -13,6 +13,9 @@ class ListenerSocket;
 class Multiplexer;
 
 #define EPOLL_NOT_REGISTERED 0xABCD
+#define TIME_BETWEEN_TIMEOUT_CHECKS 1
+#define EPOLL_WAIT_TIMEOUT (TIME_BETWEEN_TIMEOUT_CHECKS * 1000)
+#define CGI_TIMEOUT (TIME_BETWEEN_TIMEOUT_CHECKS * 4)
 
 class Connections
 {
@@ -82,6 +85,7 @@ class Connections
     void                       add_read_intreset(connection_t &conn, Multiplexer &server);
     void                       remove_write_intreset(connection_t &conn, Multiplexer &server);
     void                       add_write_intreset(connection_t &conn, Multiplexer &server);
+    void                       check_for_time_out();
 };
 
 #endif

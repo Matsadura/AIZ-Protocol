@@ -1,6 +1,5 @@
 #include "Connections.h"
 #include "Multiplexer.h"
-#include <cassert>
 
 Connections::Connections()
 {
@@ -80,6 +79,42 @@ Connections::connection_t *Connections::find(int sockfd)
     std::map<int, connection_t>::iterator it;
     it = m_list.find(sockfd);
     return it == m_list.end() ? NULL : &it->second;
+}
+
+/**
+ * Walks every open connection and kills the ones whose CGI process has been running too long
+ */
+void Connections::check_for_time_out()
+{
+    static time_t last_check_time = time(NULL);
+
+    time_t current_time = time(NULL);
+
+    if (current_time - last_check_time > TIME_BETWEEN_TIMEOUT_CHECKS)
+    {
+        last_check_time = current_time;
+    }
+    else
+    {
+        return;
+    }
+
+    std::map<int, connection_t>::iterator it = m_list.begin();
+    while (it != m_list.end())
+    {
+        connection_t &conn = it->second;
+        if (conn.cgi_active)
+        {
+            if (conn.cgi.isTimeout(current_time, CGI_TIMEOUT))
+            {
+                int unused = 0;
+                it->second.cgi.reapZombie(unused); // This will force an event at the CGI_OUT descriptor
+                conn.cgi_response.generateErrorResponse(504);
+                LOG_INFO("CONNECTION") << "[fd=" << conn.sockfd << "] timeout expired\n";
+            }
+        }
+        it++;
+    }
 }
 
 Connections::~Connections()

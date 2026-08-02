@@ -33,7 +33,8 @@ class CGI
     int    getOutFd() const;
     pid_t  getPid() const;
     bool   isRunning() const;
-    bool   isTimeout(time_t start_time, int timeout) const;
+    bool   isTimeout(time_t current_time, int seconds) const;
+    void   updateStartTime();
     time_t getStartTime() const;
     bool   exitedWithFailure(int status);
     void   reapZombie(int &status);

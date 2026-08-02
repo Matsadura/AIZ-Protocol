@@ -1,5 +1,6 @@
 #include "Multiplexer.h"
 #include "Common.h"
+#include "Connections.h"
 
 Multiplexer::Multiplexer(const char *config_file) : m_epfd(-1), m_evlist(), m_config(config_file)
 {
@@ -97,7 +98,8 @@ void Multiplexer::run()
     int ready;
     while (true)
     {
-        ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, -1);
+        ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, EPOLL_WAIT_TIMEOUT);
+        m_conns.check_for_time_out();
         std::vector<int> to_be_closed;
         std::cout << "=========\n";
         for (int j = 0; j < ready; j++)
@@ -293,6 +295,7 @@ void Multiplexer::cgi_handle_out(Connections::connection_t &conn)
     {
         LOG_INFO("CGI") << "STDOUT_SEND=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
         conn.cgi_response.appendCgiData(buff, count);
+        conn.cgi.updateStartTime();
         return;
     }
 
@@ -300,15 +303,18 @@ void Multiplexer::cgi_handle_out(Connections::connection_t &conn)
 
     int status = 0;
     conn.cgi.reapZombie(status);
-    bool failed = (count < 0) || conn.cgi.exitedWithFailure(status);
 
-    if (failed)
+    if (conn.cgi_response.getErrorCode() == 0)
     {
-        conn.cgi_response.generateErrorResponse(500);
-    }
-    else
-    {
-        conn.cgi_response.appendTerminalChunk();
+        bool failed = (count < 0) || conn.cgi.exitedWithFailure(status);
+        if (failed)
+        {
+            conn.cgi_response.generateErrorResponse(500);
+        }
+        else
+        {
+            conn.cgi_response.appendTerminalChunk();
+        }
     }
 }
 
