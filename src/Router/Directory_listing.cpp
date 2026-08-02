@@ -69,8 +69,6 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
     struct dirent                             *dir;
     std::vector<std::pair<bool, std::string> > entries;
 
-    // TODO: How is this gonna work with relative paths?
-
     d = opendir(dir_path.c_str());
     if (!d)
         return "";
@@ -101,7 +99,6 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
         const std::string &name   = entries[i].second;
         std::string        suffix = is_dir ? "/" : "";
 
-        // TODO: Use URL encoding to encode the name inside the htef attr
         output << "<a href=\"" << url_encode(name) << suffix << "\">" << html_escape_special_chars(name) << suffix
                << "</a>\n";
     }

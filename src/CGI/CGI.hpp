@@ -17,6 +17,11 @@ class CGI
     pid_t  m_pid;
     time_t m_start_time;
 
+    std::string m_client_addr;
+    std::string m_client_port;
+    std::string m_server_addr;
+    std::string m_server_port;
+
     std::vector<char *> m_envp;
     std::vector<char *> m_argv;
 
@@ -25,7 +30,8 @@ class CGI
     void freeEnvArgv();
 
   public:
-    CGI();
+    CGI(const std::string &server_addr, const std::string &server_port, const std::string &client_addr,
+        const std::string &client_port);
     ~CGI();
 
     void execute(const Request &req, const CgiMetaData &cgiMeta);

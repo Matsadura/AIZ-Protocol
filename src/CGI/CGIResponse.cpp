@@ -269,7 +269,6 @@ void CGIResponse::appendTerminalChunk()
 
     // If the CGI script is still in the header reading phase or hasn't started streaming, we can't append a terminal
     // chunk so we send a clean error
-    // @TODO: Remove error generation as you said (Ali)
     if (m_cgi_state == CGI_IDLE || m_cgi_state == CGI_READING_HEADERS)
     {
         generateErrorResponse(502);

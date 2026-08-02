@@ -2,7 +2,15 @@
 #include <cstddef>
 #include <stdexcept>
 
-CGI::CGI() : m_pipe_out(), m_pid(-1), m_start_time(0)
+CGI::CGI(const std::string &server_addr, const std::string &server_port, const std::string &client_addr,
+         const std::string &client_port) :
+    m_pipe_out(),
+    m_pid(-1),
+    m_start_time(0),
+    m_client_addr(client_addr),
+    m_client_port(client_port),
+    m_server_addr(server_addr),
+    m_server_port(server_port)
 {
     m_pipe_out[0] = -1;
     m_pipe_out[1] = -1;
@@ -158,16 +166,15 @@ void CGI::buildEnv(const Request &req, const CgiMetaData &cgiMeta)
     if (colon_pos != std::string::npos)
     {
         env_vars["SERVER_NAME"] = host_header.substr(0, colon_pos);
-        env_vars["SERVER_PORT"] = host_header.substr(colon_pos + 1);
     }
     else
     {
         env_vars["SERVER_NAME"] = host_header;
-        env_vars["SERVER_PORT"] = "80"; // TODO: ALI CHANGE THIS ILA KNTI DAYR HAJA KHRA LIKE 8080
     }
 
-    env_vars["REMOTE_ADDR"] =
-        "127.0.0.1"; // TODO: ALI UPDATE THIS WHEN THE CLIENT IP IS PASSED FROM THE CONNECTION SOCKET
+    env_vars["SERVER_ADDR"] = m_server_addr;
+    env_vars["SERVER_PORT"] = m_server_port;
+    env_vars["REMOTE_ADDR"] = m_client_addr;
 
     std::map<std::string, std::string> headers = req.getHeaders();
     for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it)

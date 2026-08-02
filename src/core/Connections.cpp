@@ -27,9 +27,18 @@ int Connections::accept_new(int listener_fd, Multiplexer &server)
         throw std::runtime_error("Couldn't find the server conifg associated with the listener");
     }
 
-    struct sockaddr_storage addr          = {};
-    socklen_t               addr_len      = sizeof(addr);
-    int                     connection_fd = accept(listener_fd, reinterpret_cast<struct sockaddr *>(&addr), &addr_len);
+    struct sockaddr_storage server_addr     = {};
+    socklen_t               server_addr_len = sizeof(server_addr);
+    if (getsockname(listener_fd, reinterpret_cast<struct sockaddr *>(&server_addr), &server_addr_len) == -1)
+    {
+        int err = errno;
+        throw std::runtime_error("getsockname() failed: " + std::string(std::strerror(err)));
+    }
+
+    struct sockaddr_storage conn_addr     = {};
+    socklen_t               conn_addr_len = sizeof(conn_addr);
+
+    int connection_fd = accept(listener_fd, reinterpret_cast<struct sockaddr *>(&conn_addr), &conn_addr_len);
 
     if (connection_fd == -1)
     {
@@ -38,11 +47,11 @@ int Connections::accept_new(int listener_fd, Multiplexer &server)
             "Failed to accept new incoming client accept() failed: " + std::string(std::strerror(err)) + ")");
     }
 
-    m_list[connection_fd] = connection_t(connection_fd, addr, listener_config);
+    m_list[connection_fd] = connection_t(connection_fd, server_addr, conn_addr, listener_config);
 
     server.add_interest(m_list[connection_fd], Multiplexer::CLIENT, EPOLLIN);
     LOG_INFO("CONNECTIONS") << "New connection accepted (fd=" << connection_fd << ") from "
-                            << addr_to_string(reinterpret_cast<struct sockaddr_in *>(&addr)) << "\n";
+                            << addr_to_string(&conn_addr) << "\n";
 
     return connection_fd;
 }

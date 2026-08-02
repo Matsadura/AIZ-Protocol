@@ -186,7 +186,6 @@ bool RouterResource::path_traverse_is_safe(const std::string &str)
             seg_len++;
         }
 
-        // TODO: Can "...." and "..."  cause a problem?
         if (seg_len == 2 && cstr_cmp_by_size(&path[i - seg_len], "..", 2))
         {
             level--;

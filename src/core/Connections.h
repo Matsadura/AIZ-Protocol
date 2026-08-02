@@ -22,7 +22,8 @@ class Connections
   public:
     struct connection_t
     {
-        struct sockaddr_storage addr;
+        struct sockaddr_storage client_addr;
+        struct sockaddr_storage server_addr;
         int                     sockfd;
         s_Server               *config;
         Response               *response;
@@ -38,26 +39,32 @@ class Connections
         bool        closing;
 
         connection_t() :
-            addr(),
+            client_addr(),
+            server_addr(),
             sockfd(),
             config(),
             response(),
             req_routed(),
             sock_events(),
             cgi_active(),
+            cgi("", "", "", ""),
             cgi_out_events(),
             closing()
         {
         }
 
-        connection_t(int conection_fd, const struct sockaddr_storage &client_addr, s_Server *server_config) :
-            addr(client_addr),
+        connection_t(int conection_fd, const struct sockaddr_storage &server_addr,
+                     const struct sockaddr_storage &client_addr, s_Server *server_config) :
+            client_addr(client_addr),
+            server_addr(server_addr),
             sockfd(conection_fd),
             config(server_config),
             response(NULL),
             req_routed(false),
             sock_events(EPOLL_NOT_REGISTERED),
             cgi_active(false),
+            cgi(get_addr_host_string(&server_addr), get_addr_port_string(&server_addr),
+                get_addr_host_string(&client_addr), get_addr_port_string(&client_addr)),
             cgi_out_events(EPOLL_NOT_REGISTERED),
             closing(false)
         {
