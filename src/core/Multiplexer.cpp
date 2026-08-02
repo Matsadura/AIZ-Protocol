@@ -1,6 +1,16 @@
 #include "Multiplexer.h"
 #include "Common.h"
 #include "Connections.h"
+#include <csignal>
+
+int Multiplexer::running = false;
+
+void int_signal_handler(int n)
+{
+    UNUSED(n);
+    std::cout << "Closing\n";
+    Multiplexer::running = false;
+}
 
 Multiplexer::Multiplexer(const char *config_file) : m_epfd(-1), m_evlist(), m_config(config_file)
 {
@@ -62,11 +72,13 @@ Multiplexer::Multiplexer(const char *config_file) : m_epfd(-1), m_evlist(), m_co
      * SIGPIPE signal to the writing process. By default, this signal kills a process
      */
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, int_signal_handler);
 
     if (!valid_server_found)
     {
         throw std::runtime_error("No valid server found in configuration");
     }
+    running = true;
 }
 
 Multiplexer::~Multiplexer()
@@ -96,12 +108,18 @@ inline uint64_t Multiplexer::pack_data(int conn_fd, FDRole role)
 void Multiplexer::run()
 {
     int ready;
-    while (true)
+    while (running)
     {
-        ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, EPOLL_WAIT_TIMEOUT);
-        m_conns.check_for_time_out();
         std::vector<int> to_be_closed;
-        std::cout << "=========\n";
+        ready = epoll_wait(m_epfd, m_evlist, MAX_EVENTS, EPOLL_WAIT_TIMEOUT);
+
+        m_conns.check_for_time_out();
+
+        if (ready > 0)
+        {
+            std::cout << "=========\n";
+        }
+
         for (int j = 0; j < ready; j++)
         {
             int    fd   = unpack_conn_fd(m_evlist[j].data.u64);

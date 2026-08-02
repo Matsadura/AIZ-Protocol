@@ -70,13 +70,17 @@ class Multiplexer
     Multiplexer &operator=(const Multiplexer &other);
 
   public:
-    /* what role the file descriptor plays within the connection*/
+    /**
+     * what role the file descriptor plays within the connection
+     */
     enum FDRole
     {
         CLIENT,
         CGI_STDOUT,
         LISTENER,
     };
+
+    static int running;
 
     Multiplexer(const char *config_file);
     ~Multiplexer();
