@@ -1,7 +1,14 @@
-#include <iostream>
+#include "../src/core/Multiplexer.h"
 
 int main()
 {
-    std::cout << "Whenever you compile, try to provide the path of the file where your current main is implemented!\n\n"
-              << "     $ make re MAIN_PATH=tests/test_request/test_headers.cpp\n\n";
+    try
+    {
+        Multiplexer server("configfile/aiz.conf");
+        server.run();
+    }
+    catch (std::exception &e)
+    {
+        std::cout << e.what() << "\n";
+    }
 }
