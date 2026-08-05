@@ -51,7 +51,6 @@ class Connections
             cgi_out_events(),
             closing()
         {
-            req.setMaxBodySize(config->max_body_size);
         }
 
         connection_t(int conection_fd, const struct sockaddr_storage &server_addr,
@@ -69,6 +68,7 @@ class Connections
             cgi_out_events(EPOLL_NOT_REGISTERED),
             closing(false)
         {
+            req.setMaxBodySize(config->max_body_size);
         }
     };
 
