@@ -102,18 +102,27 @@ std::string CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi
     std::ostringstream http_headers;
     std::string        status = "200 OK";
     std::string        location_line;
+    bool               is_redirect = false;
 
     if (cgi_headers.count("status"))
         status = cgi_headers["status"];
     if (cgi_headers.count("location"))
     {
         std::string loc = cgi_headers["location"];
-        if (!loc.empty() && loc[0] == '/')
-            m_is_local_redirect = true;
-        else
+        // if (!loc.empty() && loc[0] == '/') // TODO: What's local redirect? and what is '/' for ?
+        //     m_is_local_redirect = true;
+        // else
+        // {
+        //     status = "302 Found";
+        //     location_line += "Location: " + loc + "\r\n";
+        // }
+        if (!loc.empty())
         {
-            status = "302 Found";
-            location_line += "Location: " + loc + "\r\n";
+            location_line = "Location: " + loc + "\r\n";
+            is_redirect   = true;
+
+            if (!cgi_headers.count("status"))
+                status = "302 Found";
         }
     }
 
@@ -126,6 +135,11 @@ std::string CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi
     if (cgi_headers.count("content-length"))
     {
         http_headers << "Content-Length: " << cgi_headers["content-length"] << "\r\n";
+        m_is_chunked_response = false;
+    }
+    else if (is_redirect)
+    {
+        http_headers << "Content-Length: 0\r\n";
         m_is_chunked_response = false;
     }
     else
