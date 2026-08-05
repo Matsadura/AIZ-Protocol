@@ -428,7 +428,7 @@ bool Request::parseUnchunkedBody()
 
     if (m_body_fd != -1)
     {
-        if (write(m_body_fd, m_raw_buffer.c_str(), bytes_to_append) < 0)
+        if (write(m_body_fd, m_raw_buffer.c_str(), bytes_to_append) != static_cast<long>(bytes_to_append))
         {
             setError(500);
             return false;
