@@ -126,3 +126,8 @@
 	text-decoration: underline;
 	color: var(--blue-3);
 }
+
+.upload-widget__link {
+       padding: 1rem;
+
+}

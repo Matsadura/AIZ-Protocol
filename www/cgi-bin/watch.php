@@ -43,7 +43,7 @@ header('Content-Type: text/html; charset=utf-8');
             <source src="/uploads/<?= h(rawurlencode($file)) ?>">
         </video>
     <?php else: ?>
-        <p class="watch-widget__empty">That video couldn't be found.</p>
+        <p class="watch-widget__empty">That video couldn't be found</p>
     <?php endif; ?>
 </div>
 

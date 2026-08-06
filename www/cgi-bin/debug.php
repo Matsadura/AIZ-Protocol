@@ -1,17 +1,20 @@
 <?php
 /**
- * debug.php — quick CGI/PHP diagnostic page.
- * Dumps the query string and all incoming request headers so you can
- * check what the server is actually receiving.
+ * debug.php — CGI/PHP diagnostic page.
+ * Dumps query parameters, incoming request headers, and all CGI/server
+ * environment variables provided by the web server.
  */
-
 function h(string $s): string
 {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 }
 
-$headers = getallheaders() ?: [];
+$headers = function_exists('getallheaders') ? getallheaders() : [];
 $query   = $_GET;
+$server  = $_SERVER;
+
+// Sort environment variables alphabetically by key for easier scanning
+ksort($server);
 
 header('Content-Type: text/html; charset=utf-8');
 ?>
@@ -24,7 +27,6 @@ header('Content-Type: text/html; charset=utf-8');
 <link rel="stylesheet" href="/styles/debug.css">
 </head>
 <body class="page">
-
 <div class="debug-widget">
     <h1 class="debug-widget__title">Test CGI environment variables</h1>
 
@@ -37,7 +39,7 @@ header('Content-Type: text/html; charset=utf-8');
                 <?php foreach ($query as $key => $value): ?>
                 <tr class="debug-widget__row">
                     <th class="debug-widget__key"><?= h((string)$key) ?></th>
-                    <td class="debug-widget__value"><?= h((string)$value) ?></td>
+                    <td class="debug-widget__value"><?= h(is_scalar($value) ? (string)$value : print_r($value, true)) ?></td>
                 </tr>
                 <?php endforeach; ?>
             </table>
@@ -59,7 +61,24 @@ header('Content-Type: text/html; charset=utf-8');
             </table>
         <?php endif; ?>
     </section>
-</div>
 
+    <section class="debug-widget__section">
+        <h2 class="debug-widget__section-title">Server &amp; CGI Environment ($_SERVER)</h2>
+        <?php if (!$server): ?>
+            <p class="debug-widget__empty">No server environment variables found.</p>
+        <?php else: ?>
+            <table class="debug-widget__table">
+                <?php foreach ($server as $key => $value): ?>
+                <tr class="debug-widget__row">
+                    <th class="debug-widget__key"><?= h((string)$key) ?></th>
+                    <td class="debug-widget__value"><?= h(is_scalar($value) ? (string)$value : print_r($value, true)) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php endif; ?>
+    </section>
+</div>
 </body>
 </html>
+
+

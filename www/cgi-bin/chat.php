@@ -1,41 +1,7 @@
-#!/usr/bin/php-cgi
 <?php
-/**
- * chat.php — single-file CGI chat app
- * ------------------------------------------------------------------
- * Storage : plain text files (messages.txt, clients.txt), created
- *           automatically next to this file. No DB drivers needed —
- *           each is just append-only lines, guarded with flock() so
- *           concurrent requests don't interleave writes.
- * Identity: a random ID is minted server-side the first time a browser
- *           tab shows up. That ID is handed to the browser, which
- *           stashes it in window.sessionStorage (tab-scoped, cleared
- *           when the tab closes) and from then on the id also rides
- *           along in the URL as ?client_id=... so every GET (including
- *           a plain page refresh) is self-contained.
- * Flow    : GET  (no id)  -> mint id + name, send a tiny bootstrap page
- *                             that stores it in sessionStorage and
- *                             redirects (client-side) to ?client_id=...
- *           GET  (id)     -> render message log + form
- *           POST (id+msg) -> insert message, then 302 redirect back to
- *                             GET ?client_id=... so a refresh only ever
- *                             re-issues a GET, never resends the message
- *                             (Post/Redirect/Get pattern)
- * ------------------------------------------------------------------
- * Deploy as a real CGI script (e.g. Apache + mod_cgi / php-cgi):
- *   chmod +x chat.php
- *   AddHandler cgi-script .php   (inside a <Directory> that allows it)
- *   Options +ExecCGI
- * Or just run it under any normal PHP+Apache/Nginx setup — the code
- * below works the same either way, it only *behaves* like a CGI
- * script (stateless, one full page per request).
- */
 
 declare(strict_types=1);
 
-// ---------------------------------------------------------------
-// Storage
-// ---------------------------------------------------------------
 
 $clientsFile  = __DIR__ . '/clients.txt';  // one client per line: id\tname\tcreated_at
 $messagesFile = __DIR__ . '/messages.txt'; // one message per line, JSON-encoded
@@ -49,8 +15,6 @@ function ensure_storage_files(string $clientsFile, string $messagesFile): void
     }
 }
 
-// small helper: append a line to a file under an exclusive lock so
-// two simultaneous requests can't interleave/corrupt each other's writes
 function append_line(string $file, string $line): void
 {
     $fh = fopen($file, 'a');
@@ -63,13 +27,9 @@ function append_line(string $file, string $line): void
     fclose($fh);
 }
 
-// ---------------------------------------------------------------
-// Client identity: mint a fresh id + a friendly name (Sam, Alex...)
-// ---------------------------------------------------------------
-
 function generate_client_id(): string
 {
-    return bin2hex(random_bytes(16)); // 32 hex chars, plenty unique
+    return bin2hex(random_bytes(16));
 }
 
 function generate_name(): string
@@ -79,8 +39,6 @@ function generate_name(): string
         'Jamie', 'Drew', 'Skyler', 'Avery', 'Quinn', 'Reese', 'Rowan',
         'Harper', 'Finley', 'Emerson', 'Blake', 'Charlie', 'Dana',
     ];
-    // pick a random name, then append a short random number so
-    // repeated names ("Sam", "Sam") stay visually distinguishable
     return $first[array_rand($first)] . random_int(10, 99);
 }
 
@@ -88,7 +46,6 @@ function register_new_client(string $clientsFile): array
 {
     $id = generate_client_id();
     $name = generate_name();
-    // tab-separated: id and name never contain tabs, so no escaping needed
     append_line($clientsFile, implode("\t", [$id, $name, time()]));
     return ['id' => $id, 'name' => $name];
 }
@@ -121,10 +78,7 @@ function insert_message(string $messagesFile, string $clientId, string $body): v
     if ($body === '') {
         return;
     }
-    // keep messages reasonably sized
     $body = mb_substr($body, 0, 2000);
-    // JSON-encode each line so newlines/tabs/quotes in the message
-    // body can never break the one-line-per-message file format
     $record = json_encode([
         'client_id'  => $clientId,
         'body'       => $body,
@@ -143,17 +97,13 @@ function fetch_messages(string $messagesFile, string $clientsFile, int $limit = 
     foreach ($lines as $line) {
         $row = json_decode($line, true);
         if (!is_array($row)) {
-            continue; // skip any malformed/corrupted line
+            continue;
         }
         $row['name'] = $names[$row['client_id']] ?? 'unknown';
         $rows[] = $row;
     }
     return $rows;
 }
-
-// ---------------------------------------------------------------
-// Small helpers
-// ---------------------------------------------------------------
 
 function self_url(): string
 {
@@ -175,7 +125,6 @@ function h(string $s): string
 ensure_storage_files($clientsFile, $messagesFile);
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-// ---- POST: a new message is being sent ----
 if ($method === 'POST') {
     $clientId = trim((string)($_POST['client_id'] ?? ''));
     $message  = (string)($_POST['message'] ?? '');
@@ -184,15 +133,11 @@ if ($method === 'POST') {
         insert_message($messagesFile, $clientId, $message);
     }
 
-    // Post/Redirect/Get: send the browser back to a plain GET (with the
-    // id in the query string) so a manual page refresh only ever
-    // re-issues a GET and never resends the message.
     header('Location: ' . self_url() . '?client_id=' . urlencode($clientId), true, 302);
     echo "Redirecting...\n";
     exit;
 }
 
-// ---- GET: no client id yet -> mint one and hand it to the browser ----
 $clientId = trim((string)($_GET['client_id'] ?? ''));
 $clientName = $clientId !== '' ? get_client_name($clientsFile, $clientId) : null;
 
@@ -207,7 +152,6 @@ if ($clientId === '' || $clientName === null) {
 <body>
 <p>Joining chat as <?= h($client['name']) ?>…</p>
 <script>
-    // Tab-scoped identity: cleared automatically when the tab closes.
     sessionStorage.setItem('chat_client_id', <?= json_encode($client['id']) ?>);
     window.location.replace(<?= json_encode($bootstrapUrl) ?>);
 </script>
@@ -216,8 +160,6 @@ if ($clientId === '' || $clientName === null) {
     <?php
     exit;
 }
-
-// ---- GET with a valid client id -> render the chat page ----
 $messages = fetch_messages($messagesFile, $clientsFile);
 header('Content-Type: text/html; charset=utf-8');
 ?>
@@ -247,8 +189,6 @@ header('Content-Type: text/html; charset=utf-8');
     <?php endforeach; endif; ?>
     </div>
 
-    <!-- "form in the middle": the send box sits between the message log
-         above and nothing below — the focal point of the page. -->
     <form class="chat-widget__form" id="send" method="post" action="<?= h(self_url()) ?>">
         <input type="hidden" name="client_id" value="<?= h($clientId) ?>">
         <input class="chat-widget__input" type="text" name="message" placeholder="Type a message…" autocomplete="off" autofocus required>
@@ -257,10 +197,6 @@ header('Content-Type: text/html; charset=utf-8');
 </div>
 
 <script>
-    // Make sure this tab's sessionStorage always matches the id the
-    // page was rendered with, and keep the URL carrying it too, so
-    // reloading / re-visiting the bare script URL doesn't mint a
-    // brand-new identity as long as the tab is still open.
     var CLIENT_ID = <?= json_encode($clientId) ?>;
     sessionStorage.setItem('chat_client_id', CLIENT_ID);
 

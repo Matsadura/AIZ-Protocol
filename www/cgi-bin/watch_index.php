@@ -37,6 +37,7 @@ header('Content-Type: text/html; charset=utf-8');
 <body class="page">
  
 <div class="gallery">
+
     <h1 class="gallery__title">Videos</h1>
  
     <?php if (!$files): ?>
@@ -47,10 +48,7 @@ header('Content-Type: text/html; charset=utf-8');
                 $name = pathinfo($file, PATHINFO_FILENAME);
             ?>
             <a class="video-card" href="watch.php?v=<?= urlencode($file) ?>">
-                <video class="video-card__thumb" muted preload="metadata">
-                    <source src="videos/<?= h(rawurlencode($file)) ?>">
-                </video>
-                <div class="video-card__name"><?= h($name) ?></div>
+                <p class="video-card__name"><?= h($name) ?></p>
             </a>
             <?php endforeach; ?>
         </div>

@@ -1,4 +1,3 @@
-/* Block: page */
 .page {
 	font-family: var(--font-sans);
 	background-color: var(--gray-11);
@@ -9,7 +8,7 @@
 	min-height: 100vh;
 	margin: 0;
 }
-/* Block: chat-widget */
+
 .chat-widget {
 	background-color: var(--gray-10);
 	border: var(--border-size-1) solid var(--gray-8);
@@ -19,7 +18,7 @@
 	max-width: var(--size-content-3);
 	box-shadow: var(--shadow-4);
 }
-/* Elements of chat-widget */
+
 .chat-widget__title {
 	margin-top: 0;
 	margin-bottom: var(--size-2);
@@ -40,15 +39,18 @@
 	overflow-y: auto;
 	margin-bottom: var(--size-5);
 }
+
 .chat-widget__empty {
 	color: var(--gray-5);
 	font-size: var(--font-size-1);
 	margin: 0;
 }
+
 .chat-widget__form {
 	display: flex;
 	gap: var(--size-3);
 }
+
 .chat-widget__input {
 	flex: 1;
 	padding: var(--size-2) var(--size-3);
@@ -59,10 +61,12 @@
 	color: var(--gray-1);
 	font-family: var(--font-sans);
 }
+
 .chat-widget__input:focus {
 	outline: var(--border-size-2) solid var(--blue-6);
 	outline-offset: 1px;
 }
+
 .chat-widget__button {
 	background-color: var(--blue-7);
 	color: var(--gray-0);
@@ -74,24 +78,25 @@
 	cursor: pointer;
 	transition: background-color 0.2s ease;
 }
+
 .chat-widget__button:hover {
 	background-color: var(--blue-6);
 }
 
-/* Block: message */
 .message {
 	margin: var(--size-2) 0;
 	line-height: var(--font-lineheight-3);
 }
-/* Modifiers for message */
+
 .message--mine .message__name {
 	color: var(--blue-4);
 }
-/* Elements of message */
+
 .message__name {
 	font-weight: var(--font-weight-6);
 	font-size: var(--font-size-1);
 }
+
 .message__time {
 	color: var(--gray-5);
 	font-size: var(--font-size-0);
