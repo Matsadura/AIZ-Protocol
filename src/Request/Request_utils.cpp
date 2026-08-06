@@ -190,7 +190,7 @@ bool Request::validateMethod()
         {
             if (m_method == unsupported_methods[i])
             {
-                setError(NOT_IMPLEMENTED);
+                setError(METHOD_NOT_ALLOWED);
                 return false;
             }
         }
