@@ -2,6 +2,8 @@
 #include "RouterResource.hpp"
 #include <iomanip>
 
+#define DIRECTORY_LISTRTING_STYLED true
+
 bool comp_name(const std::pair<bool, std::string> &a, const std::pair<bool, std::string> &b)
 {
     if (a.first != b.first)
@@ -90,7 +92,10 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
 
     std::sort(entries.begin(), entries.end(), comp_name);
 
-    output << "<html><head><title>Index of " << uri_path << "</title></head><body>\n";
+    output << "<html><head><title>Index of " << uri_path << "</title>"
+           << (DIRECTORY_LISTRTING_STYLED ? "<link rel=\"stylesheet\" href=\"/styles/common.css\">" : "")
+           << (DIRECTORY_LISTRTING_STYLED ? "<link rel=\"stylesheet\" href=\"/styles/directory_listing.css\">" : "")
+           << "</head><body>\n";
     output << "<h1>Index of " << uri_path << "</h1><hr><pre>\n";
 
     for (size_t i = 0; i < entries.size(); ++i)
