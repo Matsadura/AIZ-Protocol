@@ -115,8 +115,8 @@ RouterResult Router::handle_get()
         }
         else
         {
-            router_log_helper(m_uri, loc, disk_path, "Directory with no index file and listing is off", 403);
-            return http_forbidden();
+            router_log_helper(m_uri, loc, disk_path, "Directory with no index file and listing is off", 404);
+            return http_not_found();
         }
     }
 
