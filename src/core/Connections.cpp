@@ -66,6 +66,12 @@ void Connections::close_connection(int sockfd, Multiplexer &server)
     {
         return;
     }
+    if (DebugStore::instance().enabled())
+    {
+        DebugStore::instance().dump(sockfd);
+    }
+
+    DebugStore::instance().erase(sockfd);
 
     if (conn->cgi_active)
     {

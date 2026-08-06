@@ -8,6 +8,8 @@ int main(int ac, char **av)
         return 1;
     }
 
+    DebugStore::instance().enable(false);
+
     try
     {
         Multiplexer server(av[1]);

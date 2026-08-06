@@ -1,4 +1,5 @@
 #include "Multiplexer.h"
+#include "../utils/utils.hpp"
 #include "Common.h"
 #include "Connections.h"
 #include <csignal>
@@ -241,6 +242,7 @@ void Multiplexer::sock_handle_write(Connections::connection_t &conn)
         else
         {
             LOG_INFO("SOCKET") << "Send=" << COLOR_LIGHT_RED << count << RESET << " (id=" << conn.sockfd << ")\n";
+            DebugStore::instance().append_response(conn.sockfd, data, count);
             conn.cgi_response.consumeBodyChunk(count);
         }
     }
@@ -259,6 +261,7 @@ void Multiplexer::sock_handle_write(Connections::connection_t &conn)
         }
         else
         {
+            DebugStore::instance().append_response(conn.sockfd, data, count);
             conn.response->consume(count);
         }
     }
@@ -278,6 +281,8 @@ void Multiplexer::sock_handle_read(Connections::connection_t &conn)
     long n;
 
     n = recv(conn.sockfd, buff, sizeof(buff), MSG_DONTWAIT);
+
+    DebugStore::instance().append_request(conn.sockfd, buff, n);
 
     if (n <= 0)
     {
