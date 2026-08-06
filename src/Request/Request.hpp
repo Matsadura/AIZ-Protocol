@@ -3,12 +3,12 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <iterator>
 #include <limits>
 #include <map>
-#include <cstdio>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -77,6 +77,7 @@ class Request
 
     const std::string &getRawBuffer(void) const;
     const std::string &getBodyFilename(void) const;
+    void debug_output(void);
 
   private:
     ParserState m_state;
@@ -143,6 +144,7 @@ class Request
     bool parseChunkData(void);
     bool parseChunkDataCRLF(void);
     bool parseChunkTrailer(void);
+
 };
 
 #endif /* REQUEST_HPP */

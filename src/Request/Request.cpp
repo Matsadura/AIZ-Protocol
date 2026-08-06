@@ -1,4 +1,5 @@
 #include "Request.hpp"
+#include "../core/Multiplexer.h"
 #include <cerrno>
 #include <cstddef>
 #include <cstdlib>
@@ -330,6 +331,7 @@ void Request::parseHeaders(void)
         {
             if (m_raw_buffer.size() - start_pos > 8192)
                 setError(HEADER_TOO_LARGE);
+            m_raw_buffer.erase(0, start_pos);
             return;
         }
 
@@ -472,4 +474,14 @@ void Request::parseBody(void)
     if (!parseUnchunkedBody())
         return;
     m_state = COMPLETE;
+}
+
+void Request::debug_output()
+{
+    std::cerr << COLOR_DARK_YELLOW << m_method << " " << m_uri << "\n";
+    for (std::map<std::string, std::string>::iterator it = m_headers.begin(); it != m_headers.end(); it++)
+    {
+        std::cerr << it->first << ": " << it->second << "\n";
+    }
+    std::cerr << RESET;
 }
