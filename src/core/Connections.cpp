@@ -1,6 +1,5 @@
 #include "Connections.h"
 #include "Multiplexer.h"
-#include <cassert>
 
 Connections::Connections()
 {
@@ -20,31 +19,41 @@ Connections &Connections::operator=(const Connections &other) // NOLINT
 /**
  * Accept a fresh client connection and register it for monitoring
  */
-int Connections::accept_new(int fd, Multiplexer &server)
+int Connections::accept_new(int listener_fd, Multiplexer &server)
 {
-    connection_t conn;
-    socklen_t    size = sizeof conn.addr;
-    conn.sockfd       = accept(fd, reinterpret_cast<struct sockaddr *>(&conn.addr), &size);
-    if (conn.sockfd == -1)
-        abort("accept");
-    LOG_INFO("CONNECTIONS") << "New connection accepted (fd=" << conn.sockfd << ") from "
-                            << addr_to_string(reinterpret_cast<struct sockaddr_in *>(&conn.addr)) << "\n";
-    m_list[conn.sockfd]   = conn;
-    connection_t &cennRef = m_list[conn.sockfd];
-
-    cennRef.cgi_in_events  = EPOLL_NOT_REGISTERED;
-    cennRef.cgi_out_events = EPOLL_NOT_REGISTERED;
-    cennRef.sock_events    = EPOLL_NOT_REGISTERED;
-    cennRef.closing        = false;
-    cennRef.cgi_active     = false;
-    cennRef.config         = server.get_config(fd);
-    cennRef.response       = NULL;
-    if (cennRef.config == NULL)
+    s_Server *listener_config = server.get_config(listener_fd);
+    if (!listener_config)
     {
-        UNREACHABLE("get_config should never return a null value\n");
+        throw std::runtime_error("Couldn't find the server conifg associated with the listener");
     }
-    server.add_interest(cennRef, Multiplexer::CLIENT, EPOLLIN);
-    return conn.sockfd;
+
+    struct sockaddr_storage server_addr     = {};
+    socklen_t               server_addr_len = sizeof(server_addr);
+    if (getsockname(listener_fd, reinterpret_cast<struct sockaddr *>(&server_addr), &server_addr_len) == -1)
+    {
+        int err = errno;
+        throw std::runtime_error("getsockname() failed: " + std::string(std::strerror(err)));
+    }
+
+    struct sockaddr_storage conn_addr     = {};
+    socklen_t               conn_addr_len = sizeof(conn_addr);
+
+    int connection_fd = accept(listener_fd, reinterpret_cast<struct sockaddr *>(&conn_addr), &conn_addr_len);
+
+    if (connection_fd == -1)
+    {
+        int err = errno;
+        throw std::runtime_error(
+            "Failed to accept new incoming client accept() failed: " + std::string(std::strerror(err)) + ")");
+    }
+
+    m_list[connection_fd] = connection_t(connection_fd, server_addr, conn_addr, listener_config);
+
+    server.add_interest(m_list[connection_fd], Multiplexer::CLIENT, EPOLLIN);
+    LOG_INFO("CONNECTIONS") << "New connection accepted (fd=" << connection_fd << ") from "
+                            << addr_to_string(&conn_addr) << "\n";
+
+    return connection_fd;
 }
 
 /**
@@ -54,12 +63,20 @@ void Connections::close_connection(int sockfd, Multiplexer &server)
 {
     connection_t *conn = find(sockfd);
     if (conn == NULL)
+    {
         return;
+    }
+    if (DebugStore::instance().enabled())
+    {
+        DebugStore::instance().dump(sockfd);
+    }
+
+    DebugStore::instance().erase(sockfd);
 
     if (conn->cgi_active)
     {
         server.remove_interest(*conn, Multiplexer::CGI_STDOUT);
-        conn->cgi.waitAndClean(); // TODO: Mybe Kill the process?
+        conn->cgi.waitAndClean();
     }
 
     LOG_INFO("CONNECTIONS") << "Close (fd=" << sockfd << ") connection\n";
@@ -79,12 +96,50 @@ Connections::connection_t *Connections::find(int sockfd)
     return it == m_list.end() ? NULL : &it->second;
 }
 
+/**
+ * Walks every open connection and kills the ones whose CGI process has been running too long
+ */
+void Connections::check_for_time_out()
+{
+    static time_t last_check_time = time(NULL);
+
+    time_t current_time = time(NULL);
+
+    if (current_time - last_check_time > TIME_BETWEEN_TIMEOUT_CHECKS)
+    {
+        last_check_time = current_time;
+    }
+    else
+    {
+        return;
+    }
+
+    std::map<int, connection_t>::iterator it = m_list.begin();
+    while (it != m_list.end())
+    {
+        connection_t &conn = it->second;
+        if (conn.cgi_active)
+        {
+            if (conn.cgi.isTimeout(current_time, CGI_TIMEOUT))
+            {
+                int unused = 0;
+                it->second.cgi.reapZombie(unused); // This will force an event at the CGI_OUT descriptor
+                conn.cgi_response.generateErrorResponse(504);
+                LOG_INFO("CONNECTION") << "[fd=" << conn.sockfd << "] timeout expired\n";
+            }
+        }
+        it++;
+    }
+}
+
 Connections::~Connections()
 {
     std::map<int, connection_t>::iterator it = m_list.begin();
     while (it != m_list.end())
     {
+        it->second.cgi.waitAndClean();
         close(it->second.sockfd);
+        delete it->second.response;
         it++;
     }
 }

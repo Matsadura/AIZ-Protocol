@@ -1,11 +1,36 @@
 #include "Router.hpp"
 #include "RouterResource.hpp"
+#include <iomanip>
+
+#define DIRECTORY_LISTRTING_STYLED true
 
 bool comp_name(const std::pair<bool, std::string> &a, const std::pair<bool, std::string> &b)
 {
     if (a.first != b.first)
         return a.first > b.first; // dir always comes first!
     return a.second < b.second;
+}
+
+std::string url_encode(const std::string &value)
+{
+    std::ostringstream escaped;
+    escaped.fill('0');
+    escaped << std::hex << std::uppercase;
+
+    for (size_t i = 0; i < value.length(); ++i)
+    {
+        unsigned char c = value[i];
+
+        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+        {
+            escaped << c;
+        }
+        else
+        {
+            escaped << '%' << std::setw(2) << int(c);
+        }
+    }
+    return escaped.str();
 }
 
 std::string html_escape_special_chars(const std::string &in)
@@ -46,8 +71,6 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
     struct dirent                             *dir;
     std::vector<std::pair<bool, std::string> > entries;
 
-    // TODO: How is this gonna work with relative paths?
-
     d = opendir(dir_path.c_str());
     if (!d)
         return "";
@@ -69,7 +92,10 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
 
     std::sort(entries.begin(), entries.end(), comp_name);
 
-    output << "<html><head><title>Index of " << uri_path << "</title></head><body>\n";
+    output << "<html><head><title>Index of " << uri_path << "</title>"
+           << (DIRECTORY_LISTRTING_STYLED ? "<link rel=\"stylesheet\" href=\"/styles/common.css\">" : "")
+           << (DIRECTORY_LISTRTING_STYLED ? "<link rel=\"stylesheet\" href=\"/styles/directory_listing.css\">" : "")
+           << "</head><body>\n";
     output << "<h1>Index of " << uri_path << "</h1><hr><pre>\n";
 
     for (size_t i = 0; i < entries.size(); ++i)
@@ -78,8 +104,8 @@ std::string generate_directory_listing(const std::string &dir_path, const std::s
         const std::string &name   = entries[i].second;
         std::string        suffix = is_dir ? "/" : "";
 
-        // TODO: Use URL encoding to encode the name inside the htef attr
-        output << "<a href=\"" << name << suffix << "\">" << html_escape_special_chars(name) << suffix << "</a>\n";
+        output << "<a href=\"" << url_encode(name) << suffix << "\">" << html_escape_special_chars(name) << suffix
+               << "</a>\n";
     }
 
     output << "</pre><hr></body></html>\n";

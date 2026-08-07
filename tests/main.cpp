@@ -1,7 +1,22 @@
-#include <iostream>
+#include "../src/core/Multiplexer.h"
 
-int main()
+int main(int ac, char **av)
 {
-    std::cout << "Whenever you compile, try to provide the path of the file where your current main is implemented!\n\n"
-              << "     $ make re MAIN_PATH=tests/test_request/test_headers.cpp\n\n";
+    if (ac != 2)
+    {
+        std::cerr << "Usage: " << av[0] << " <file.conf>\n";
+        return 1;
+    }
+
+    DebugStore::instance().enable(false);
+
+    try
+    {
+        Multiplexer server(av[1]);
+        server.run();
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "ERROR: " << e.what() << "\n";
+    }
 }

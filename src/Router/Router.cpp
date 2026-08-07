@@ -19,16 +19,20 @@ RouterResult Router::get_result()
     {
         return handle_delete();
     }
+    if (m_method == "POST")
+    {
+        return handle_post();
+    }
     return http_method_not_allowed();
 }
 
-RouterResult Router::init_error_result(const s_Server &server, int http_code)
+RouterResult Router::init_http_result(const s_Server &server, int http_code)
 {
     const std::string &file_path = RouterResource::get_default_page(server, http_code);
     return RouterResult(http_code, file_path, RouterResult::FILE_PATH);
 }
 
-RouterResult Router::init_error_result(int http_code)
+RouterResult Router::init_http_result(int http_code)
 {
     const std::string &file_path = RouterResource::get_default_page(m_server, http_code);
     return RouterResult(http_code, file_path, RouterResult::FILE_PATH);
@@ -41,7 +45,7 @@ RouterResult Router::http_directory_listing(const std::string &dir_path)
 
 RouterResult Router::http_no_content()
 {
-    return init_error_result(204);
+    return init_http_result(204);
 }
 
 RouterResult Router::http_redirection(int http_code, const std::string &rediretion_location)
@@ -51,44 +55,48 @@ RouterResult Router::http_redirection(int http_code, const std::string &redireti
 
 RouterResult Router::http_forbidden()
 {
-    return init_error_result(403);
+    return init_http_result(403);
 }
 
 RouterResult Router::http_not_found()
 {
-    return init_error_result(404);
+    return init_http_result(404);
 }
 
 RouterResult Router::http_method_not_allowed()
 {
-    return init_error_result(405);
+    return init_http_result(405);
 }
 
 RouterResult Router::http_conflict()
 {
-    return init_error_result(409);
+    return init_http_result(409);
 }
 
 RouterResult Router::handle_get()
 {
-    std::string disk_path = m_resource.get_disk_path();
-
-    if (!m_resource.exists())
+    if (!m_resource.validate_root_path())
     {
-        router_log_helper(m_uri, m_resource.get_location(), disk_path, "File or directory does not exist", 404);
         return http_not_found();
     }
 
-    if (m_resource.is_directory())
+    const s_Location *loc = m_resource.get_location();
+
+    std::string disk_path = RouterResource::join_path(loc->root, m_resource.get_subpath());
+
+    if (!is_file_or_directory_exists(disk_path))
+    {
+        router_log_helper(m_uri, loc, disk_path, "File or directory does not exist", 404);
+        return http_not_found();
+    }
+
+    if (is_directory_path(disk_path))
     {
         if (m_uri.empty() || m_uri[m_uri.size() - 1] != '/')
         {
-            router_log_helper(m_uri, m_resource.get_location(), m_uri + "/",
-                              "Directory; redirecting with trailing slash", 301);
+            router_log_helper(m_uri, loc, m_uri + "/", "Directory; redirecting with trailing slash", 301);
             return http_redirection(301, m_uri + "/");
         }
-
-        const s_Location *loc = m_resource.get_location();
 
         std::string indexPath = RouterResource::join_path(disk_path, loc->index);
         if (!loc->index.empty() && is_file_regular(indexPath))
@@ -107,14 +115,14 @@ RouterResult Router::handle_get()
         }
         else
         {
-            router_log_helper(m_uri, loc, disk_path, "Directory with no index file and listing is off", 403);
-            return http_forbidden();
+            router_log_helper(m_uri, loc, disk_path, "Directory with no index file and listing is off", 404);
+            return http_not_found();
         }
     }
 
     if (!is_file_readable(disk_path))
     {
-        router_log_helper(m_uri, m_resource.get_location(), disk_path, "File permission denied", 403);
+        router_log_helper(m_uri, loc, disk_path, "File permission denied", 403);
         return http_forbidden();
     }
     router_log_helper(m_uri, m_resource.get_location(), disk_path, "Will be served", 200);
@@ -123,16 +131,21 @@ RouterResult Router::handle_get()
 
 RouterResult Router::handle_delete()
 {
-    std::string       disk_path = m_resource.get_disk_path();
-    const s_Location *loc       = m_resource.get_location();
+    if (!m_resource.validate_root_path())
+    {
+        return http_not_found();
+    }
 
-    if (!m_resource.exists())
+    const s_Location *loc       = m_resource.get_location();
+    std::string       disk_path = RouterResource::join_path(loc->root, m_resource.get_subpath());
+
+    if (!is_file_or_directory_exists(disk_path))
     {
         router_log_helper(m_uri, loc, disk_path, "File or directory does not exist", 404);
         return http_not_found();
     }
 
-    if (m_resource.is_directory() && (m_uri.empty() || m_uri[m_uri.size() - 1] != '/'))
+    if (is_directory_path(disk_path) && (m_uri.empty() || m_uri[m_uri.size() - 1] != '/'))
     {
         router_log_helper(m_uri, loc, m_uri + "/", "Directory; cannot delete without trailing slash", 409);
         return http_conflict();
@@ -161,12 +174,18 @@ RouterResult Router::handle_delete()
 
 RouterResult Router::handle_post()
 {
-    std::string       disk_path = m_resource.get_disk_path();
-    const s_Location *loc       = m_resource.get_location();
 
-    if (m_resource.exists())
+    if (!m_resource.validate_upload_store_path())
     {
-        if (m_resource.is_directory())
+        return http_not_found();
+    }
+
+    const s_Location *loc       = m_resource.get_location();
+    std::string       disk_path = RouterResource::join_path(loc->uploadStore, m_resource.get_subpath());
+
+    if (is_file_or_directory_exists(disk_path))
+    {
+        if (is_directory_path(disk_path))
         {
             router_log_helper(m_uri, loc, disk_path, "Directory posting is not allowed", 403);
             return http_forbidden();
@@ -204,19 +223,19 @@ RouterResult Router::handle_post()
     }
 
     router_log_helper(m_uri, loc, disk_path, "Path is writable for POST", 200);
-    return RouterResult(200, disk_path, RouterResult::FILE_PATH);
+    return RouterResult(200, disk_path, RouterResult::FILE_PATH_POST);
 }
 
-CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
+CgiMetaData Router::get_cgi_metadata()
 {
-    const s_Location *location = RouterResource::get_best_matched_location(server, req.getPath());
-
-    if (!location || location->CGIhandlers.empty() || location->root.empty())
+    if (m_resource.has_early_response() || !m_resource.validate_root_path())
     {
         return CgiMetaData();
     }
 
-    std::string disk_path = RouterResource::join_path(location->root, req.getPath().substr(location->path.size()));
+    const s_Location *loc = m_resource.get_location();
+
+    std::string disk_path = RouterResource::join_path(loc->root, m_resource.get_subpath());
     std::string script_path;
     std::string path_info;
 
@@ -227,13 +246,6 @@ CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
             std::string current_path = disk_path.substr(0, i);
             if (!is_file_regular(current_path))
             {
-                continue;
-            }
-
-            // TODO: Not save! location->root will be counted going above root will happen anyway
-            if (!RouterResource::path_traverse_is_safe(current_path))
-            {
-                LOG_DEBUG("ROUTER") << "PATH=" << current_path << " => escapes root, rejected!\n";
                 continue;
             }
 
@@ -257,11 +269,11 @@ CgiMetaData is_cgi_request(const s_Server &server, const Request &req)
     if (dot_pos != std::string::npos && (slash_pos == std::string::npos || dot_pos > slash_pos))
     {
         std::string                                        ext = script_path.substr(dot_pos);
-        std::map<std::string, std::string>::const_iterator it  = location->CGIhandlers.find(ext);
+        std::map<std::string, std::string>::const_iterator it  = loc->CGIhandlers.find(ext);
 
-        if (it != location->CGIhandlers.end())
+        if (it != loc->CGIhandlers.end())
         {
-            LOG_DEBUG("ROUTER") << "[URI=" << req.getPath() << "]" << " [config_loc=" << location->path
+            LOG_DEBUG("ROUTER") << "[URI=" << m_resource.get_req_path() << "]" << " [config_loc=" << loc->path
                                 << "] Recognized as CGI: $(" << it->second << " " << script_path << ")\n";
             return CgiMetaData(true, script_path, path_info, it->second);
         }

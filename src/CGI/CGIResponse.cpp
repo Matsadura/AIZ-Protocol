@@ -45,6 +45,11 @@ bool CGIResponse::isBufferFull() const
     return m_body_buffer.size() >= CHUNK_SIZE_LIMIT;
 }
 
+std::size_t CGIResponse::getAlreadySendCount() const
+{
+    return m_already_send_count;
+}
+
 /**
  * appendCgiData - Appends CGI data and formats it immediately into HTTP chunks.
  * @data: A pointer to the data to be appended.
@@ -96,19 +101,33 @@ std::string CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi
 {
     std::ostringstream http_headers;
     std::string        status = "200 OK";
+    std::string        location_line;
+    bool               is_redirect = false;
 
     if (cgi_headers.count("status"))
         status = cgi_headers["status"];
     if (cgi_headers.count("location"))
     {
         std::string loc = cgi_headers["location"];
-        if (!loc.empty() && loc[0] == '/')
-            m_is_local_redirect = true;
-        else
-            status = "302 Found";
+        // if (!loc.empty() && loc[0] == '/') // TODO: What's local redirect? and what is '/' for ?
+        //     m_is_local_redirect = true;
+        // else
+        // {
+        //     status = "302 Found";
+        //     location_line += "Location: " + loc + "\r\n";
+        // }
+        if (!loc.empty())
+        {
+            location_line = "Location: " + loc + "\r\n";
+            is_redirect   = true;
+
+            if (!cgi_headers.count("status"))
+                status = "302 Found";
+        }
     }
 
     http_headers << "HTTP/1.1 " << status << "\r\n";
+    http_headers << location_line;
 
     if (cgi_headers.count("content-type"))
         http_headers << "Content-Type: " << cgi_headers["content-type"] << "\r\n";
@@ -116,6 +135,11 @@ std::string CGIResponse::translateToHttp(std::map<std::string, std::string> &cgi
     if (cgi_headers.count("content-length"))
     {
         http_headers << "Content-Length: " << cgi_headers["content-length"] << "\r\n";
+        m_is_chunked_response = false;
+    }
+    else if (is_redirect)
+    {
+        http_headers << "Content-Length: 0\r\n";
         m_is_chunked_response = false;
     }
     else
@@ -259,7 +283,6 @@ void CGIResponse::appendTerminalChunk()
 
     // If the CGI script is still in the header reading phase or hasn't started streaming, we can't append a terminal
     // chunk so we send a clean error
-    // @TODO: Remove error generation as you said (Ali)
     if (m_cgi_state == CGI_IDLE || m_cgi_state == CGI_READING_HEADERS)
     {
         generateErrorResponse(502);
@@ -287,28 +310,7 @@ void CGIResponse::generateErrorResponse(int error_code)
     if (error_code == 0)
         return;
 
-    if (m_already_send_count != 0)
-    {
-        // This is used when we already send some data and suddenly the script failed, sending error in this case is
-        // fatel, its better to only close the request without sending the error
-        m_body_buffer.clear();
-        m_cgi_state  = CGI_COMPLETE;
-        m_error_code = error_code;
-        return;
-    }
-
     m_body_buffer.clear();
-
-    std::ostringstream response;
-    response << "HTTP/1.1 " << error_code << " Error\r\n";
-    response << "Content-Type: text/plain\r\n";
-    response << "Content-Length: 0\r\n";
-    response << "\r\n";
-
-    std::string err_str = response.str();
-
-    m_body_buffer.insert(m_body_buffer.end(), err_str.begin(), err_str.end());
-
     m_cgi_state  = CGI_COMPLETE;
     m_error_code = error_code;
 }

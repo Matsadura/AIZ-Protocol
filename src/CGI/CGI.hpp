@@ -17,15 +17,21 @@ class CGI
     pid_t  m_pid;
     time_t m_start_time;
 
+    std::string m_client_addr;
+    std::string m_client_port;
+    std::string m_server_addr;
+    std::string m_server_port;
+
     std::vector<char *> m_envp;
     std::vector<char *> m_argv;
 
-    void buildEnv(const Request &req);
+    void buildEnv(const Request &req, const CgiMetaData &cgiMeta);
     void buildArgv(const CgiMetaData &cgiMeta);
     void freeEnvArgv();
 
   public:
-    CGI();
+    CGI(const std::string &server_addr, const std::string &server_port, const std::string &client_addr,
+        const std::string &client_port);
     ~CGI();
 
     void execute(const Request &req, const CgiMetaData &cgiMeta);
@@ -33,10 +39,11 @@ class CGI
     int    getOutFd() const;
     pid_t  getPid() const;
     bool   isRunning() const;
-    bool   isTimeout(time_t start_time, int timeout) const;
+    bool   isTimeout(time_t current_time, int seconds) const;
+    void   updateStartTime();
     time_t getStartTime() const;
     bool   exitedWithFailure(int status);
-    bool   reapIfExited(int &status);
+    void   reapZombie(int &status);
 
     void waitAndClean();
 

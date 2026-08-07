@@ -132,7 +132,10 @@ void Response::read_file()
     size_t read = static_cast<size_t>(m_file.gcount());
     if (!read)
     {
-        m_state = COMPLETE;
+        if (m_response_buffer.empty())
+        {
+            m_state = COMPLETE;
+        }
         m_file.close();
     }
     else

@@ -26,12 +26,22 @@ Listeners::~Listeners()
     }
 }
 
-std::string int_to_string(int n)
+void Listeners::remove(int socket_fd)
 {
-    std::stringstream ss;
+    close(socket_fd);
+    m_sockFds.erase(socket_fd);
+}
 
-    ss << n;
-    return ss.str();
+static std::string create_report_messsage(const char *function_name, const std::string &node,
+                                          const std::string &service, int error_code)
+{
+    // NOTE: Error prefix and last new line will be added in the place where this error will be caught
+    // Furor: Failed to prepare listener socket for '0.0.0.0:8080'.
+    // Cause: getaddrinfo() failed (Address already in use).
+    std::ostringstream message;
+    message << "Failed to prepare listener socket for '" << node << ":" << service << "'.\n";
+    message << "    Cause: " << function_name << "() failed (" << std::strerror(error_code) << ").";
+    return message.str();
 }
 
 /**
@@ -39,27 +49,35 @@ std::string int_to_string(int n)
  *
  * Return: file descriptor of the listening socket
  */
-int Listeners::create_new(const s_Server &server)
+int Listeners::create_new(const std::string &node, const std::string &service, const s_Server &server)
 {
-    std::string node_name = server.ports.begin()->first;
-    std::string port      = int_to_string(server.ports.begin()->second[0]);
-
-    ListenerAddrInfo ai(node_name.c_str(), port.c_str());
+    ListenerAddrInfo ai(node.c_str(), service.c_str());
     int              sockfd;
 
-    sockfd  = socket(ai.family(), ai.sockType(), 0);
+    sockfd = socket(ai.family(), ai.sockType(), 0);
+    if (sockfd == -1)
+    {
+        close(sockfd);
+        throw std::runtime_error(create_report_messsage("socket", node, service, errno));
+    }
     int yes = 1;
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
     {
-        perror("setsockopt");
-        exit(1);
+        close(sockfd);
+        throw std::runtime_error(create_report_messsage("setsockopt", node, service, errno));
     }
 
     if (bind(sockfd, ai.addr(), ai.addr_len()) != 0)
-        abort("bind");
+    {
+        close(sockfd);
+        throw std::runtime_error(create_report_messsage("bind", node, service, errno));
+    }
 
     if (listen(sockfd, Listeners::PandingLimit) != 0)
-        abort("lister");
+    {
+        close(sockfd);
+        throw std::runtime_error(create_report_messsage("listen", node, service, errno));
+    }
 
     LOG_INFO("LISTENERS") << "Listening at " << ai.toString() << " (fd=" << sockfd << ")\n";
     m_sockFds[sockfd] = server;

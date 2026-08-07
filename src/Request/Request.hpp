@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <iterator>
@@ -19,6 +20,7 @@
 #define BAD_REQUEST 400
 #define METHOD_NOT_ALLOWED 405
 #define PAYLOAD_TOO_LARGE 413
+#define URI_TOO_LONG 414
 #define HEADER_TOO_LARGE 431
 #define NOT_IMPLEMENTED 501
 
@@ -75,6 +77,7 @@ class Request
 
     const std::string &getRawBuffer(void) const;
     const std::string &getBodyFilename(void) const;
+    void               debug_output(void);
 
   private:
     ParserState m_state;
@@ -92,6 +95,7 @@ class Request
     int         m_body_fd;
     std::string m_body_filename;
     size_t      m_body_bytes_read;
+    bool        m_is_generated_temp_file;
 
     bool   m_is_chunked;
     size_t m_content_length;

@@ -18,8 +18,7 @@ class Listeners
      * succeed immediately. Further connection requests block until a pending connection
      * is accepted (via accept()), and thus removed from the queue of pending connections.
      */
-    static int PandingLimit;
-    // std::vector<int>        m_sockFds;
+    static int              PandingLimit;
     std::map<int, s_Server> m_sockFds;
 
     /**
@@ -32,7 +31,8 @@ class Listeners
     Listeners();
     ~Listeners();
 
-    int         create_new(const s_Server &server);
+    int         create_new(const std::string &node, const std::string &service, const s_Server &server);
+    void        remove(int socket_fd);
     bool        contains(int fd);
     s_Server   *get_listener_config(int fd);
     std::size_t size();

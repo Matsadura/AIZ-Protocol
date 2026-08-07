@@ -11,7 +11,7 @@
 #include <cstddef>
 #include <sys/epoll.h>
 
-#define MAX_EVENTS 100000
+#define MAX_EVENTS 10000
 #define BUFF_SIZE 65536
 
 #define __ANSI_SEQ(n) "\033[" #n "m"
@@ -70,13 +70,17 @@ class Multiplexer
     Multiplexer &operator=(const Multiplexer &other);
 
   public:
-    /* what role the file descriptor plays within the connection*/
+    /**
+     * what role the file descriptor plays within the connection
+     */
     enum FDRole
     {
         CLIENT,
         CGI_STDOUT,
         LISTENER,
     };
+
+    static int running;
 
     Multiplexer(const char *config_file);
     ~Multiplexer();
@@ -105,100 +109,24 @@ class Multiplexer
     void log_event(struct epoll_event ev);
     void epoll_apply(Connections::connection_t &conn, int op, FDRole role, uint32_t events);
 
-    s_Server *get_config(int fd)
-    {
-        return m_listeners.get_listener_config(fd);
-    }
+    s_Server *get_config(int fd);
 
-    int get_role_fd(Connections::connection_t &conn, FDRole role)
-    {
-        switch (role)
-        {
-            case CLIENT:
-                return conn.sockfd;
-            case CGI_STDOUT:
-                return conn.cgi.getOutFd();
-            default:
-                UNREACHABLE("get_role_fd() got unknown role");
-        }
-    }
+    int                get_role_fd(Connections::connection_t &conn, FDRole role);
+    uint32_t          &get_role_events(Connections::connection_t &conn, FDRole role);
+    static const char *get_role_string(FDRole role);
+    void               add_interest(Connections::connection_t &conn, FDRole role, uint32_t events);
+    void               modify_interest(Connections::connection_t &conn, FDRole role, uint32_t events);
+    void               remove_interest(Connections::connection_t &conn, FDRole role);
 
-    uint32_t &get_role_events(Connections::connection_t &conn, FDRole role)
-    {
-        switch (role)
-        {
-            case CLIENT:
-                return conn.sock_events;
-            case CGI_STDOUT:
-                return conn.cgi_out_events;
-            default:
-                UNREACHABLE("get_role_events() got unknown role");
-        }
-    }
-
-    static const char *get_role_string(FDRole role)
-    {
-        switch (role)
-        {
-            case CLIENT:
-                return COLOR_DARK_PINK "CLIENT" RESET;
-            case LISTENER:
-                return COLOR_DARK_PINK "LISTENER" RESET;
-            case CGI_STDOUT:
-                return COLOR_DARK_PINK "CGI_STDOUT" RESET;
-            default:
-                UNREACHABLE("get_role_string() got unknown role");
-        }
-    }
-
-    void add_interest(Connections::connection_t &conn, FDRole role, uint32_t events)
-    {
-        uint32_t &prev_events = get_role_events(conn, role);
-
-        if (prev_events != EPOLL_NOT_REGISTERED)
-        {
-            return;
-        }
-        prev_events = events;
-        epoll_apply(conn, EPOLL_CTL_ADD, role, events);
-    }
-
-    void modify_interest(Connections::connection_t &conn, FDRole role, uint32_t events)
-    {
-        uint32_t &prev_events = get_role_events(conn, role);
-
-        if (prev_events == EPOLL_NOT_REGISTERED)
-        {
-            return;
-        }
-
-        if (prev_events != events)
-        {
-            prev_events = events;
-            epoll_apply(conn, EPOLL_CTL_MOD, role, events);
-        }
-    }
-
-    void remove_interest(Connections::connection_t &conn, FDRole role)
-    {
-        uint32_t &prev_events = get_role_events(conn, role);
-
-        if (prev_events == EPOLL_NOT_REGISTERED)
-        {
-            return;
-        }
-
-        prev_events = EPOLL_NOT_REGISTERED;
-        epoll_apply(conn, EPOLL_CTL_DEL, role, 0);
-    }
-
-    void cgi_handle_in(Connections::connection_t &conn);
     void cgi_handle_out(Connections::connection_t &conn);
-
     void sock_handle_write(Connections::connection_t &conn);
     void sock_handle_read(Connections::connection_t &conn);
 
     void update_events(Connections::connection_t &conn);
+    void react_to_cgi(Connections::connection_t &conn, uint32_t &client_events);
+    void react_to_response(Connections::connection_t &conn, uint32_t &client_events);
+    void react_to_request(Connections::connection_t &conn, uint32_t &client_events);
+    void router_request(Connections::connection_t &conn);
 };
 
 #endif

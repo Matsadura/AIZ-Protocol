@@ -1,6 +1,9 @@
 #include "Request.hpp"
 #include <cerrno>
+#include <cstdlib>
+#include <ctime>
 #include <fcntl.h>
+#include <sstream>
 #include <unistd.h>
 
 /**
@@ -10,15 +13,33 @@ bool Request::isReadyForBodyParsing()
 {
     if (m_state != COMPLETE)
     {
-        m_state             = BODY;
-        char tmp_template[] = "/tmp/ws_body_XXXXXX";
-        m_body_fd           = mkstemp(tmp_template);
-        if (m_body_fd == -1)
+        m_state = BODY;
+
+        static bool seeded = false;
+        if (!seeded)
         {
-            setError(500);
-            return false;
+            std::srand(static_cast<unsigned int>(std::time(NULL)));
+            seeded = true;
         }
-        m_body_filename = tmp_template;
+
+        while (true)
+        {
+            std::ostringstream oss;
+            oss << "/tmp/ws_body_" << std::time(NULL) << "_" << std::rand();
+            m_body_filename = oss.str();
+
+            m_body_fd = open(m_body_filename.c_str(), O_RDWR | O_CREAT | O_EXCL, 0600);
+
+            if (m_body_fd != -1)
+                break;
+
+            if (errno != EEXIST)
+            {
+                setError(500);
+                return false;
+            }
+        }
+        m_is_generated_temp_file = true;
         return true;
     }
     return false;
@@ -31,17 +52,21 @@ bool Request::isReadyForBodyParsing(const std::string &filename)
 {
     if (m_state != COMPLETE)
     {
-        m_state         = BODY;
-        m_body_filename = filename;
-        m_body_fd       = open(m_body_filename.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
-        if (m_body_fd == -1)
-        {
-            setError(500);
-            return false;
-        }
-        return true;
+        m_state = BODY;
     }
-    return false;
+    if (m_body_fd != -1)
+    {
+        close(m_body_fd);
+    }
+    m_body_filename = filename;
+    m_body_fd       = open(m_body_filename.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    if (m_body_fd == -1)
+    {
+        setError(500);
+        return false;
+    }
+    m_is_generated_temp_file = false;
+    return true;
 }
 
 /**
@@ -165,7 +190,7 @@ bool Request::validateMethod()
         {
             if (m_method == unsupported_methods[i])
             {
-                setError(NOT_IMPLEMENTED);
+                setError(METHOD_NOT_ALLOWED);
                 return false;
             }
         }
@@ -574,7 +599,11 @@ bool Request::parseChunkSize(void)
 {
     size_t crlf_pos = m_raw_buffer.find("\r\n");
     if (crlf_pos == std::string::npos)
+    {
+        if (m_raw_buffer.size() > 8192)
+            setError(BAD_REQUEST);
         return false;
+    }
 
     std::string size_line = m_raw_buffer.substr(0, crlf_pos);
     size_t      semi_pos  = size_line.find(';');
@@ -601,7 +630,7 @@ bool Request::parseChunkData(void)
 
     if (m_body_fd != -1)
     {
-        if (write(m_body_fd, m_raw_buffer.c_str(), bytes_to_append) < 0)
+        if (write(m_body_fd, m_raw_buffer.c_str(), bytes_to_append) != static_cast<long>(bytes_to_append))
         {
             setError(500);
             return false;

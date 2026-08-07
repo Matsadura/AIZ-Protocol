@@ -1,5 +1,6 @@
 #include "utils.hpp"
 #include <iostream>
+#include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
@@ -119,11 +120,25 @@ bool string_starts_with(const std::string &bigger_string, const std::string &pre
     return std::equal(prefix.begin(), prefix.end(), bigger_string.begin());
 }
 
+bool is_file_or_directory_exists(const std::string &path)
+{
+    struct stat file_info = {};
+
+    return stat(path.c_str(), &file_info) == 0;
+}
+
 bool is_file_regular(const std::string &path)
 {
     struct stat file_info = {};
 
     return stat(path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode);
+}
+
+bool is_directory_path(const std::string &path)
+{
+    struct stat file_info = {};
+
+    return stat(path.c_str(), &file_info) == 0 && S_ISDIR(file_info.st_mode);
 }
 
 bool is_file_readable(const std::string &filepath)
@@ -165,4 +180,12 @@ bool isValidHeaderValue(const std::string &value)
     if (value.size() > 8192)
         return false;
     return true;
+}
+
+std::string int_to_string(int n)
+{
+    std::stringstream ss;
+
+    ss << n;
+    return ss.str();
 }

@@ -1,0 +1,20 @@
+<< PING LAG1784745719469
+>> :c3r3p10.1337.ma PONG :LAG1784745719469
+<< JOIN test1
+>> :c3r3p10.1337.ma This is not a valid name for channel Name 
+<< JOIN #test1
+>> :anass!kirito@localhost JOIN :#test1
+>> :c3r3p10.1337.ma 331 anass #test1 :No Topic is set
+>> :c3r3p10.1337.ma 353 anass = #test1 :@anass 
+>> :c3r3p10.1337.ma 366 anass #test1 :End of /NAMES list
+<< JOIN #test2
+>> :anass!kirito@localhost JOIN :#test2
+<< MODE #test2
+<< WHO #test2
+>> :c3r3p10.1337.ma 331 anass #test2 :No Topic is set
+>> :c3r3p10.1337.ma 353 anass = #test2 :@anass 
+>> :c3r3p10.1337.ma 366 anass #test2 :End of /NAMES list
+>> :c3r3p10.1337.ma 314 
+>> :c3r3p10.1337.ma 315 
+<< PING LAG1784745749468
+>> :c3r3p10.1337.ma PONG :LAG1784745749468

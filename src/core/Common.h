@@ -85,4 +85,6 @@
 #define LOG_DEBUG(module) (std::cout << "DEBUG: [" << (module) << "] > ")
 #define LOG_ERROR(module) (std::cerr << "ERROR: [" << (module) << "] > ")
 
-std::string addr_to_string(struct sockaddr_in *addr);
+std::string addr_to_string(const struct sockaddr_storage *add);
+std::string get_addr_port_string(const struct sockaddr_storage *add);
+std::string get_addr_host_string(const struct sockaddr_storage *add);
