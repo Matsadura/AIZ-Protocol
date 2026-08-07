@@ -80,7 +80,7 @@ int Listeners::create_new(const std::string &node, const std::string &service, c
     }
 
     LOG_INFO("LISTENERS") << "Listening at " << ai.toString() << " (fd=" << sockfd << ")\n";
-    m_sockFds[sockfd]            = server;
+    m_sockFds[sockfd] = server;
     return sockfd;
 }
 

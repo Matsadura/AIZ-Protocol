@@ -18,9 +18,8 @@ class Listeners
      * succeed immediately. Further connection requests block until a pending connection
      * is accepted (via accept()), and thus removed from the queue of pending connections.
      */
-    static int PandingLimit;
-    // std::vector<int>        m_sockFds;
-    std::map<int, s_Server>        m_sockFds;
+    static int              PandingLimit;
+    std::map<int, s_Server> m_sockFds;
 
     /**
      * @note: this class is uncopyable

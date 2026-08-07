@@ -77,7 +77,7 @@ class Request
 
     const std::string &getRawBuffer(void) const;
     const std::string &getBodyFilename(void) const;
-    void debug_output(void);
+    void               debug_output(void);
 
   private:
     ParserState m_state;
@@ -144,7 +144,6 @@ class Request
     bool parseChunkData(void);
     bool parseChunkDataCRLF(void);
     bool parseChunkTrailer(void);
-
 };
 
 #endif /* REQUEST_HPP */
