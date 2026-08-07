@@ -445,6 +445,22 @@ void Multiplexer::react_to_request(Connections::connection_t &conn, uint32_t &cl
         router_request(conn);
     }
 
+    if (conn.cgi_meta.is_cgi && !conn.cgi_active && conn.req.isComplete())
+    {
+        try
+        {
+            conn.cgi.execute(conn.req, conn.cgi_meta);
+            conn.cgi_active = true;
+            add_interest(conn, CGI_STDOUT, EPOLLIN);
+        }
+        catch (std::runtime_error &e)
+        {
+            conn.cgi.waitAndClean();
+            LOG_ERROR("CGI") << "[URI=" << conn.req.getURI() << "] " << e.what() << "\n";
+            conn.response = new Response(Router::init_http_result(*conn.config, 500));
+        }
+    }
+
     if (conn.req.isComplete() && !conn.cgi_active && !conn.response && conn.req.getMethod() == "POST")
     {
         LOG_INFO("REQUEST") << "File: \"" << COLOR_DARK_BLUE << conn.req.getBodyFilename() << RESET << "\" Created!\n";
@@ -461,19 +477,8 @@ void Multiplexer::router_request(Connections::connection_t &conn)
 
     if (cgi_meta.is_cgi)
     {
-        try
-        {
-            conn.req.isReadyForBodyParsing();
-            conn.cgi.execute(conn.req, cgi_meta);
-            conn.cgi_active = true;
-            add_interest(conn, CGI_STDOUT, EPOLLIN);
-        }
-        catch (std::runtime_error &e)
-        {
-            conn.cgi.waitAndClean();
-            LOG_ERROR("CGI") << "[URI=" << conn.req.getURI() << "] " << e.what() << "\n";
-            conn.response = new Response(Router::init_http_result(*conn.config, 500));
-        }
+        conn.cgi_meta = cgi_meta;
+        conn.req.isReadyForBodyParsing();
     }
     else
     {

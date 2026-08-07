@@ -37,6 +37,7 @@ class Connections
         uint32_t    cgi_out_events;
         CGIResponse cgi_response;
         bool        closing;
+        CgiMetaData cgi_meta;
 
         connection_t() :
             client_addr(),
